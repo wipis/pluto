@@ -1,177 +1,141 @@
-import { Link } from '@tanstack/react-router'
-
-import { useState } from 'react'
+import { Link } from "@tanstack/react-router";
+import { useState } from "react";
 import {
-  ChevronDown,
-  ChevronRight,
   Home,
   Menu,
-  Network,
-  SquareFunction,
-  StickyNote,
+  Users,
+  Building2,
+  Megaphone,
+  FileCheck,
+  Upload,
+  Plus,
   X,
-} from 'lucide-react'
+  Settings,
+} from "lucide-react";
+
+const navItems = [
+  { to: "/", label: "Dashboard", icon: Home },
+  { to: "/contacts", label: "Contacts", icon: Users },
+  { to: "/companies", label: "Companies", icon: Building2 },
+  { to: "/campaigns", label: "Campaigns", icon: Megaphone },
+  { to: "/review", label: "Review Queue", icon: FileCheck },
+  { to: "/settings", label: "Settings", icon: Settings },
+];
+
+const quickActions = [
+  { to: "/contacts/new", label: "Add Contact", icon: Plus },
+  { to: "/contacts/import", label: "Import CSV", icon: Upload },
+  { to: "/campaigns/new", label: "New Campaign", icon: Plus },
+];
 
 export default function Header() {
-  const [isOpen, setIsOpen] = useState(false)
-  const [groupedExpanded, setGroupedExpanded] = useState<
-    Record<string, boolean>
-  >({})
+  const [isOpen, setIsOpen] = useState(false);
 
   return (
     <>
-      <header className="p-4 flex items-center bg-gray-800 text-white shadow-lg">
-        <button
-          onClick={() => setIsOpen(true)}
-          className="p-2 hover:bg-gray-700 rounded-lg transition-colors"
-          aria-label="Open menu"
-        >
-          <Menu size={24} />
-        </button>
-        <h1 className="ml-4 text-xl font-semibold">
-          <Link to="/">
-            <img
-              src="/tanstack-word-logo-white.svg"
-              alt="TanStack Logo"
-              className="h-10"
-            />
+      <header className="border-b bg-background">
+        <div className="flex h-14 items-center px-4 gap-4">
+          <button
+            onClick={() => setIsOpen(true)}
+            className="p-2 hover:bg-muted rounded-lg transition-colors lg:hidden"
+            aria-label="Open menu"
+          >
+            <Menu size={20} />
+          </button>
+          <Link to="/" className="font-semibold text-lg">
+            Pluto
           </Link>
-        </h1>
+          <nav className="hidden lg:flex items-center gap-1 ml-6">
+            {navItems.map((item) => (
+              <Link
+                key={item.to}
+                to={item.to}
+                className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
+                activeProps={{
+                  className:
+                    "flex items-center gap-2 px-3 py-2 text-sm font-medium text-foreground bg-muted rounded-md",
+                }}
+                activeOptions={{ exact: item.to === "/" }}
+              >
+                <item.icon size={16} />
+                {item.label}
+              </Link>
+            ))}
+          </nav>
+          <div className="ml-auto flex items-center gap-2">
+            {quickActions.slice(0, 2).map((action) => (
+              <Link
+                key={action.to}
+                to={action.to}
+                className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 text-sm bg-primary text-primary-foreground hover:bg-primary/90 rounded-md transition-colors"
+              >
+                <action.icon size={14} />
+                {action.label}
+              </Link>
+            ))}
+          </div>
+        </div>
       </header>
 
+      {/* Mobile sidebar */}
+      {isOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+          onClick={() => setIsOpen(false)}
+        />
+      )}
       <aside
-        className={`fixed top-0 left-0 h-full w-80 bg-gray-900 text-white shadow-2xl z-50 transform transition-transform duration-300 ease-in-out flex flex-col ${
-          isOpen ? 'translate-x-0' : '-translate-x-full'
+        className={`fixed top-0 left-0 h-full w-72 bg-background border-r z-50 transform transition-transform duration-300 ease-in-out flex flex-col lg:hidden ${
+          isOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
-        <div className="flex items-center justify-between p-4 border-b border-gray-700">
-          <h2 className="text-xl font-bold">Navigation</h2>
+        <div className="flex items-center justify-between p-4 border-b">
+          <span className="font-semibold text-lg">Pluto</span>
           <button
             onClick={() => setIsOpen(false)}
-            className="p-2 hover:bg-gray-800 rounded-lg transition-colors"
+            className="p-2 hover:bg-muted rounded-lg transition-colors"
             aria-label="Close menu"
           >
-            <X size={24} />
+            <X size={20} />
           </button>
         </div>
 
-        <nav className="flex-1 p-4 overflow-y-auto">
-          <Link
-            to="/"
-            onClick={() => setIsOpen(false)}
-            className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-800 transition-colors mb-2"
-            activeProps={{
-              className:
-                'flex items-center gap-3 p-3 rounded-lg bg-cyan-600 hover:bg-cyan-700 transition-colors mb-2',
-            }}
-          >
-            <Home size={20} />
-            <span className="font-medium">Home</span>
-          </Link>
-
-          {/* Demo Links Start */}
-
-          <Link
-            to="/demo/start/server-funcs"
-            onClick={() => setIsOpen(false)}
-            className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-800 transition-colors mb-2"
-            activeProps={{
-              className:
-                'flex items-center gap-3 p-3 rounded-lg bg-cyan-600 hover:bg-cyan-700 transition-colors mb-2',
-            }}
-          >
-            <SquareFunction size={20} />
-            <span className="font-medium">Start - Server Functions</span>
-          </Link>
-
-          <Link
-            to="/demo/start/api-request"
-            onClick={() => setIsOpen(false)}
-            className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-800 transition-colors mb-2"
-            activeProps={{
-              className:
-                'flex items-center gap-3 p-3 rounded-lg bg-cyan-600 hover:bg-cyan-700 transition-colors mb-2',
-            }}
-          >
-            <Network size={20} />
-            <span className="font-medium">Start - API Request</span>
-          </Link>
-
-          <div className="flex flex-row justify-between">
+        <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+          {navItems.map((item) => (
             <Link
-              to="/demo/start/ssr"
+              key={item.to}
+              to={item.to}
               onClick={() => setIsOpen(false)}
-              className="flex-1 flex items-center gap-3 p-3 rounded-lg hover:bg-gray-800 transition-colors mb-2"
+              className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
               activeProps={{
                 className:
-                  'flex-1 flex items-center gap-3 p-3 rounded-lg bg-cyan-600 hover:bg-cyan-700 transition-colors mb-2',
+                  "flex items-center gap-3 px-3 py-2.5 rounded-lg font-medium text-foreground bg-muted",
               }}
+              activeOptions={{ exact: item.to === "/" }}
             >
-              <StickyNote size={20} />
-              <span className="font-medium">Start - SSR Demos</span>
+              <item.icon size={20} />
+              <span>{item.label}</span>
             </Link>
-            <button
-              className="p-2 hover:bg-gray-800 rounded-lg transition-colors"
-              onClick={() =>
-                setGroupedExpanded((prev) => ({
-                  ...prev,
-                  StartSSRDemo: !prev.StartSSRDemo,
-                }))
-              }
-            >
-              {groupedExpanded.StartSSRDemo ? (
-                <ChevronDown size={20} />
-              ) : (
-                <ChevronRight size={20} />
-              )}
-            </button>
+          ))}
+
+          <div className="pt-4 mt-4 border-t">
+            <p className="px-3 mb-2 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              Quick Actions
+            </p>
+            {quickActions.map((action) => (
+              <Link
+                key={action.to}
+                to={action.to}
+                onClick={() => setIsOpen(false)}
+                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              >
+                <action.icon size={20} />
+                <span>{action.label}</span>
+              </Link>
+            ))}
           </div>
-          {groupedExpanded.StartSSRDemo && (
-            <div className="flex flex-col ml-4">
-              <Link
-                to="/demo/start/ssr/spa-mode"
-                onClick={() => setIsOpen(false)}
-                className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-800 transition-colors mb-2"
-                activeProps={{
-                  className:
-                    'flex items-center gap-3 p-3 rounded-lg bg-cyan-600 hover:bg-cyan-700 transition-colors mb-2',
-                }}
-              >
-                <StickyNote size={20} />
-                <span className="font-medium">SPA Mode</span>
-              </Link>
-
-              <Link
-                to="/demo/start/ssr/full-ssr"
-                onClick={() => setIsOpen(false)}
-                className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-800 transition-colors mb-2"
-                activeProps={{
-                  className:
-                    'flex items-center gap-3 p-3 rounded-lg bg-cyan-600 hover:bg-cyan-700 transition-colors mb-2',
-                }}
-              >
-                <StickyNote size={20} />
-                <span className="font-medium">Full SSR</span>
-              </Link>
-
-              <Link
-                to="/demo/start/ssr/data-only"
-                onClick={() => setIsOpen(false)}
-                className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-800 transition-colors mb-2"
-                activeProps={{
-                  className:
-                    'flex items-center gap-3 p-3 rounded-lg bg-cyan-600 hover:bg-cyan-700 transition-colors mb-2',
-                }}
-              >
-                <StickyNote size={20} />
-                <span className="font-medium">Data Only</span>
-              </Link>
-            </div>
-          )}
-
-          {/* Demo Links End */}
         </nav>
       </aside>
     </>
-  )
+  );
 }
