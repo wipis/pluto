@@ -63,7 +63,7 @@ function parseEmailResponse(response: string): { subject: string; body: string }
 
 // Draft emails for campaign contacts
 export const draftCampaignEmails = createServerFn({ method: "POST" })
-  .validator((data: { campaignId: string; contactIds?: string[] }) => data)
+  .inputValidator((data: { campaignId: string; contactIds?: string[] }) => data)
   .handler(async ({ data }) => {
     const env = (globalThis as any).env as { DB: D1Database; ANTHROPIC_API_KEY?: string };
     const db = getDb(env.DB);
@@ -196,7 +196,7 @@ BODY:
 
 // Regenerate a single draft with optional feedback
 export const regenerateDraft = createServerFn({ method: "POST" })
-  .validator((data: { campaignContactId: string; feedback?: string }) => data)
+  .inputValidator((data: { campaignContactId: string; feedback?: string }) => data)
   .handler(async ({ data }) => {
     const env = (globalThis as any).env as { DB: D1Database; ANTHROPIC_API_KEY?: string };
     const db = getDb(env.DB);

@@ -12,7 +12,7 @@ import type { ProductId } from "@/lib/products";
 
 // Get all campaigns with counts
 export const getCampaigns = createServerFn({ method: "GET" })
-  .validator(
+  .inputValidator(
     (data?: { status?: string; product?: string }) => data ?? {}
   )
   .handler(async ({ data }) => {
@@ -61,7 +61,7 @@ export const getCampaigns = createServerFn({ method: "GET" })
 
 // Get single campaign with contacts
 export const getCampaign = createServerFn({ method: "GET" })
-  .validator((data: { id: string }) => data)
+  .inputValidator((data: { id: string }) => data)
   .handler(async ({ data }) => {
     const env = (globalThis as any).env as Cloudflare.Env;
     const db = getDb(env.DB);
@@ -85,7 +85,7 @@ export const getCampaign = createServerFn({ method: "GET" })
 
 // Create campaign
 export const createCampaign = createServerFn({ method: "POST" })
-  .validator(
+  .inputValidator(
     (data: {
       name: string;
       product: ProductId;
@@ -113,7 +113,7 @@ export const createCampaign = createServerFn({ method: "POST" })
 
 // Update campaign
 export const updateCampaign = createServerFn({ method: "POST" })
-  .validator(
+  .inputValidator(
     (data: {
       id: string;
       name?: string;
@@ -143,7 +143,7 @@ export const updateCampaign = createServerFn({ method: "POST" })
 
 // Add contacts to campaign
 export const addContactsToCampaign = createServerFn({ method: "POST" })
-  .validator((data: { campaignId: string; contactIds: string[] }) => data)
+  .inputValidator((data: { campaignId: string; contactIds: string[] }) => data)
   .handler(async ({ data }) => {
     const env = (globalThis as any).env as Cloudflare.Env;
     const db = getDb(env.DB);
@@ -188,7 +188,7 @@ export const addContactsToCampaign = createServerFn({ method: "POST" })
 
 // Remove contact from campaign
 export const removeContactFromCampaign = createServerFn({ method: "POST" })
-  .validator((data: { campaignId: string; contactId: string }) => data)
+  .inputValidator((data: { campaignId: string; contactId: string }) => data)
   .handler(async ({ data }) => {
     const env = (globalThis as any).env as Cloudflare.Env;
     const db = getDb(env.DB);
@@ -207,7 +207,7 @@ export const removeContactFromCampaign = createServerFn({ method: "POST" })
 
 // Get campaign contacts by stage
 export const getCampaignContactsByStage = createServerFn({ method: "GET" })
-  .validator((data: { campaignId: string; stage?: string }) => data)
+  .inputValidator((data: { campaignId: string; stage?: string }) => data)
   .handler(async ({ data }) => {
     const env = (globalThis as any).env as Cloudflare.Env;
     const db = getDb(env.DB);

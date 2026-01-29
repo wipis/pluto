@@ -15,7 +15,7 @@ interface CSVRow {
 
 // Import contacts from CSV data
 export const importContacts = createServerFn({ method: "POST" })
-  .validator((data: { rows: CSVRow[]; campaignId?: string }) => data)
+  .inputValidator((data: { rows: CSVRow[]; campaignId?: string }) => data)
   .handler(async ({ data }) => {
     const env = (globalThis as any).env as Cloudflare.Env;
     const db = getDb(env.DB);
@@ -164,7 +164,7 @@ export const importContacts = createServerFn({ method: "POST" })
 
 // Parse CSV text into rows
 export const parseCSV = createServerFn({ method: "POST" })
-  .validator((data: { csvText: string; columnMapping: Record<string, string> }) => data)
+  .inputValidator((data: { csvText: string; columnMapping: Record<string, string> }) => data)
   .handler(async ({ data }) => {
     const lines = data.csvText.trim().split("\n");
     if (lines.length < 2) {

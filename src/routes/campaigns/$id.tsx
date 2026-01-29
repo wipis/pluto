@@ -73,7 +73,7 @@ export const Route = createFileRoute("/campaigns/$id")({
   component: CampaignDetail,
   loader: async ({ params }) => {
     const campaign = await getCampaign({ data: { id: params.id } });
-    const { contacts } = await getContacts({});
+    const { contacts } = await getContacts({ data: {} });
     return { campaign, allContacts: contacts };
   },
 });
@@ -87,11 +87,16 @@ function CampaignDetail() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingAction, setProcessingAction] = useState("");
 
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    name: string;
+    description: string;
+    templatePrompt: string;
+    status: "draft" | "active" | "paused" | "completed";
+  }>({
     name: campaign?.name || "",
     description: campaign?.description || "",
     templatePrompt: campaign?.templatePrompt || "",
-    status: campaign?.status || "draft",
+    status: (campaign?.status as "draft" | "active" | "paused" | "completed") || "draft",
   });
 
   if (!campaign) {
@@ -208,7 +213,7 @@ function CampaignDetail() {
               {isEditing ? (
                 <Select
                   value={formData.status}
-                  onValueChange={(value) =>
+                  onValueChange={(value: "draft" | "active" | "paused" | "completed") =>
                     setFormData({ ...formData, status: value })
                   }
                 >

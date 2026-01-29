@@ -4,7 +4,7 @@ import { getDb, campaignContacts, activities } from "@/lib/db";
 
 // Get drafts for review queue
 export const getReviewQueue = createServerFn({ method: "GET" })
-  .validator((data?: { campaignId?: string }) => data ?? {})
+  .inputValidator((data?: { campaignId?: string }) => data ?? {})
   .handler(async ({ data }) => {
     const env = (globalThis as any).env as Cloudflare.Env;
     const db = getDb(env.DB);
@@ -30,7 +30,7 @@ export const getReviewQueue = createServerFn({ method: "GET" })
 
 // Approve a draft
 export const approveDraft = createServerFn({ method: "POST" })
-  .validator(
+  .inputValidator(
     (data: {
       campaignContactId: string;
       finalSubject: string;
@@ -70,7 +70,7 @@ export const approveDraft = createServerFn({ method: "POST" })
 
 // Reject a draft (skip contact)
 export const rejectDraft = createServerFn({ method: "POST" })
-  .validator((data: { campaignContactId: string }) => data)
+  .inputValidator((data: { campaignContactId: string }) => data)
   .handler(async ({ data }) => {
     const env = (globalThis as any).env as Cloudflare.Env;
     const db = getDb(env.DB);
@@ -101,7 +101,7 @@ export const rejectDraft = createServerFn({ method: "POST" })
 
 // Update draft content without approving
 export const updateDraft = createServerFn({ method: "POST" })
-  .validator(
+  .inputValidator(
     (data: {
       campaignContactId: string;
       draftSubject?: string;

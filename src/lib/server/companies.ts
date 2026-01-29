@@ -4,7 +4,7 @@ import { getDb, companies, contacts } from "@/lib/db";
 
 // Get all companies with contact counts
 export const getCompanies = createServerFn({ method: "GET" })
-  .validator(
+  .inputValidator(
     (data?: { search?: string; enriched?: boolean; limit?: number; offset?: number }) =>
       data ?? {}
   )
@@ -55,7 +55,7 @@ export const getCompanies = createServerFn({ method: "GET" })
 
 // Get single company with contacts
 export const getCompany = createServerFn({ method: "GET" })
-  .validator((data: { id: string }) => data)
+  .inputValidator((data: { id: string }) => data)
   .handler(async ({ data }) => {
     const env = (globalThis as any).env as Cloudflare.Env;
     const db = getDb(env.DB);
@@ -74,7 +74,7 @@ export const getCompany = createServerFn({ method: "GET" })
 
 // Create company
 export const createCompany = createServerFn({ method: "POST" })
-  .validator((data: { name: string; domain?: string }) => data)
+  .inputValidator((data: { name: string; domain?: string }) => data)
   .handler(async ({ data }) => {
     const env = (globalThis as any).env as Cloudflare.Env;
     const db = getDb(env.DB);
@@ -92,7 +92,7 @@ export const createCompany = createServerFn({ method: "POST" })
 
 // Update company
 export const updateCompany = createServerFn({ method: "POST" })
-  .validator((data: { id: string; name?: string; domain?: string }) => data)
+  .inputValidator((data: { id: string; name?: string; domain?: string }) => data)
   .handler(async ({ data }) => {
     const env = (globalThis as any).env as Cloudflare.Env;
     const db = getDb(env.DB);
@@ -113,7 +113,7 @@ export const updateCompany = createServerFn({ method: "POST" })
 
 // Find or create company by domain
 export const findOrCreateCompany = createServerFn({ method: "POST" })
-  .validator((data: { name: string; domain?: string }) => data)
+  .inputValidator((data: { name: string; domain?: string }) => data)
   .handler(async ({ data }) => {
     const env = (globalThis as any).env as Cloudflare.Env;
     const db = getDb(env.DB);

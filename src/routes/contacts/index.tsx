@@ -25,7 +25,7 @@ import { Plus, Search, MoreVertical, Trash2, Eye, Upload } from "lucide-react";
 
 export const Route = createFileRoute("/contacts/")({
   component: ContactList,
-  loader: () => getContacts({}),
+  loader: () => getContacts({ data: {} }),
 });
 
 function ContactList() {

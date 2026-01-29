@@ -9,7 +9,7 @@ interface ComposioEnv {
 
 // Stub: Get Gmail connection status
 export const getGmailConnection = createServerFn({ method: "GET" })
-  .validator((data?: {}) => data ?? {})
+  .inputValidator((data?: {}) => data ?? {})
   .handler(async () => {
     // TODO: Implement with Composio
     return {
@@ -21,7 +21,7 @@ export const getGmailConnection = createServerFn({ method: "GET" })
 
 // Stub: Initiate Gmail OAuth connection
 export const initiateGmailConnection = createServerFn({ method: "POST" })
-  .validator((data: { redirectUrl: string }) => data)
+  .inputValidator((data: { redirectUrl: string }) => data)
   .handler(async ({ data }) => {
     // TODO: Implement with Composio
     return {
@@ -32,7 +32,7 @@ export const initiateGmailConnection = createServerFn({ method: "POST" })
 
 // Send a single email (stub for now)
 export const sendEmail = createServerFn({ method: "POST" })
-  .validator((data: { campaignContactId: string }) => data)
+  .inputValidator((data: { campaignContactId: string }) => data)
   .handler(async ({ data }) => {
     const env = (globalThis as any).env as ComposioEnv;
     const db = getDb(env.DB);
@@ -56,7 +56,7 @@ export const sendEmail = createServerFn({ method: "POST" })
 
 // Send batch of approved emails
 export const sendBatch = createServerFn({ method: "POST" })
-  .validator((data: { campaignId: string; contactIds?: string[] }) => data)
+  .inputValidator((data: { campaignId: string; contactIds?: string[] }) => data)
   .handler(async ({ data }) => {
     const env = (globalThis as any).env as ComposioEnv;
     const db = getDb(env.DB);
@@ -87,7 +87,7 @@ export const sendBatch = createServerFn({ method: "POST" })
 
 // Check for replies (stub for now)
 export const checkReplies = createServerFn({ method: "POST" })
-  .validator((data?: {}) => data ?? {})
+  .inputValidator((data?: {}) => data ?? {})
   .handler(async () => {
     // TODO: Implement with Composio
     return { found: 0 };

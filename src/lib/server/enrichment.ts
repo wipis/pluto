@@ -43,7 +43,7 @@ async function searchExa(query: string, apiKey: string): Promise<ExaResult[]> {
 
 // Enrich a single company
 export const enrichCompany = createServerFn({ method: "POST" })
-  .validator((data: { companyId: string; productId?: string }) => data)
+  .inputValidator((data: { companyId: string; productId?: string }) => data)
   .handler(async ({ data }) => {
     const env = (globalThis as any).env as { DB: D1Database; EXA_API_KEY?: string };
     const db = getDb(env.DB);
@@ -92,7 +92,7 @@ export const enrichCompany = createServerFn({ method: "POST" })
 
 // Enrich campaign contacts
 export const enrichCampaignContacts = createServerFn({ method: "POST" })
-  .validator((data: { campaignId: string; contactIds?: string[] }) => data)
+  .inputValidator((data: { campaignId: string; contactIds?: string[] }) => data)
   .handler(async ({ data }) => {
     const env = (globalThis as any).env as { DB: D1Database; EXA_API_KEY?: string };
     const db = getDb(env.DB);

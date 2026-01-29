@@ -4,7 +4,7 @@ import { getDb, contacts, companies, activities, campaignContacts, emails } from
 
 // Get all contacts with company info
 export const getContacts = createServerFn({ method: "GET" })
-  .validator((data: { search?: string; limit?: number; offset?: number }) => data)
+  .inputValidator((data: { search?: string; limit?: number; offset?: number }) => data)
   .handler(async ({ data }) => {
     const env = (globalThis as any).env as Cloudflare.Env;
     const db = getDb(env.DB);
@@ -52,7 +52,7 @@ export const getContacts = createServerFn({ method: "GET" })
 
 // Get single contact with full details
 export const getContact = createServerFn({ method: "GET" })
-  .validator((data: { id: string }) => data)
+  .inputValidator((data: { id: string }) => data)
   .handler(async ({ data }) => {
     const env = (globalThis as any).env as Cloudflare.Env;
     const db = getDb(env.DB);
@@ -79,7 +79,7 @@ export const getContact = createServerFn({ method: "GET" })
 
 // Create contact
 export const createContact = createServerFn({ method: "POST" })
-  .validator(
+  .inputValidator(
     (data: {
       firstName: string;
       lastName: string;
@@ -139,7 +139,7 @@ export const createContact = createServerFn({ method: "POST" })
 
 // Update contact
 export const updateContact = createServerFn({ method: "POST" })
-  .validator(
+  .inputValidator(
     (data: {
       id: string;
       firstName?: string;
@@ -180,7 +180,7 @@ export const updateContact = createServerFn({ method: "POST" })
 
 // Delete contact
 export const deleteContact = createServerFn({ method: "POST" })
-  .validator((data: { id: string }) => data)
+  .inputValidator((data: { id: string }) => data)
   .handler(async ({ data }) => {
     const env = (globalThis as any).env as Cloudflare.Env;
     const db = getDb(env.DB);

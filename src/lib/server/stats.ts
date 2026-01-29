@@ -96,7 +96,7 @@ export const getDashboardStats = createServerFn({ method: "GET" }).handler(
 
 // Get activity feed for a contact
 export const getContactActivities = createServerFn({ method: "GET" })
-  .validator((data: { contactId: string; limit?: number }) => data)
+  .inputValidator((data: { contactId: string; limit?: number }) => data)
   .handler(async ({ data }) => {
     const env = (globalThis as any).env as Cloudflare.Env;
     const db = getDb(env.DB);
