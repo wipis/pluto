@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { eq, like, desc, isNotNull, count, sql } from "drizzle-orm";
 import { getDb, companies, contacts } from "@/lib/db";
+import { getEnv } from "@/lib/env";
 
 // Get all companies with contact counts
 export const getCompanies = createServerFn({ method: "GET" })
@@ -9,7 +10,7 @@ export const getCompanies = createServerFn({ method: "GET" })
       data ?? {}
   )
   .handler(async ({ data }) => {
-    const env = (globalThis as any).env as Cloudflare.Env;
+    const env = getEnv();
     const db = getDb(env.DB);
 
     const limit = data?.limit ?? 50;
@@ -57,7 +58,7 @@ export const getCompanies = createServerFn({ method: "GET" })
 export const getCompany = createServerFn({ method: "GET" })
   .inputValidator((data: { id: string }) => data)
   .handler(async ({ data }) => {
-    const env = (globalThis as any).env as Cloudflare.Env;
+    const env = getEnv();
     const db = getDb(env.DB);
 
     const company = await db.query.companies.findFirst({
@@ -76,7 +77,7 @@ export const getCompany = createServerFn({ method: "GET" })
 export const createCompany = createServerFn({ method: "POST" })
   .inputValidator((data: { name: string; domain?: string }) => data)
   .handler(async ({ data }) => {
-    const env = (globalThis as any).env as Cloudflare.Env;
+    const env = getEnv();
     const db = getDb(env.DB);
 
     const [company] = await db
@@ -94,7 +95,7 @@ export const createCompany = createServerFn({ method: "POST" })
 export const updateCompany = createServerFn({ method: "POST" })
   .inputValidator((data: { id: string; name?: string; domain?: string }) => data)
   .handler(async ({ data }) => {
-    const env = (globalThis as any).env as Cloudflare.Env;
+    const env = getEnv();
     const db = getDb(env.DB);
 
     const { id, ...updates } = data;
@@ -115,7 +116,7 @@ export const updateCompany = createServerFn({ method: "POST" })
 export const findOrCreateCompany = createServerFn({ method: "POST" })
   .inputValidator((data: { name: string; domain?: string }) => data)
   .handler(async ({ data }) => {
-    const env = (globalThis as any).env as Cloudflare.Env;
+    const env = getEnv();
     const db = getDb(env.DB);
 
     // Try to find by domain first if provided

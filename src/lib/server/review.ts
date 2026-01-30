@@ -1,12 +1,13 @@
 import { createServerFn } from "@tanstack/react-start";
 import { eq, desc, and } from "drizzle-orm";
 import { getDb, campaignContacts, activities } from "@/lib/db";
+import { getEnv } from "@/lib/env";
 
 // Get drafts for review queue
 export const getReviewQueue = createServerFn({ method: "GET" })
   .inputValidator((data?: { campaignId?: string }) => data ?? {})
   .handler(async ({ data }) => {
-    const env = (globalThis as any).env as Cloudflare.Env;
+    const env = getEnv();
     const db = getDb(env.DB);
 
     const drafts = await db.query.campaignContacts.findMany({
@@ -38,7 +39,7 @@ export const approveDraft = createServerFn({ method: "POST" })
     }) => data
   )
   .handler(async ({ data }) => {
-    const env = (globalThis as any).env as Cloudflare.Env;
+    const env = getEnv();
     const db = getDb(env.DB);
 
     const [updated] = await db
@@ -72,7 +73,7 @@ export const approveDraft = createServerFn({ method: "POST" })
 export const rejectDraft = createServerFn({ method: "POST" })
   .inputValidator((data: { campaignContactId: string }) => data)
   .handler(async ({ data }) => {
-    const env = (globalThis as any).env as Cloudflare.Env;
+    const env = getEnv();
     const db = getDb(env.DB);
 
     const [updated] = await db
@@ -109,7 +110,7 @@ export const updateDraft = createServerFn({ method: "POST" })
     }) => data
   )
   .handler(async ({ data }) => {
-    const env = (globalThis as any).env as Cloudflare.Env;
+    const env = getEnv();
     const db = getDb(env.DB);
 
     const { campaignContactId, ...updates } = data;

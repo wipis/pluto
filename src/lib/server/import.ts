@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { eq, like } from "drizzle-orm";
 import { getDb, contacts, companies, activities, campaignContacts } from "@/lib/db";
+import { getEnv } from "@/lib/env";
 
 interface CSVRow {
   firstName?: string;
@@ -17,7 +18,7 @@ interface CSVRow {
 export const importContacts = createServerFn({ method: "POST" })
   .inputValidator((data: { rows: CSVRow[]; campaignId?: string }) => data)
   .handler(async ({ data }) => {
-    const env = (globalThis as any).env as Cloudflare.Env;
+    const env = getEnv();
     const db = getDb(env.DB);
 
     const results = {

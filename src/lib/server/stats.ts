@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { count, eq, desc, sql, and, gte } from "drizzle-orm";
+import { count, eq, desc, and, gte } from "drizzle-orm";
 import {
   getDb,
   contacts,
@@ -8,11 +8,12 @@ import {
   campaignContacts,
   activities,
 } from "@/lib/db";
+import { getEnv } from "@/lib/env";
 
 // Get dashboard stats
 export const getDashboardStats = createServerFn({ method: "GET" }).handler(
   async () => {
-    const env = (globalThis as any).env as Cloudflare.Env;
+    const env = getEnv();
     const db = getDb(env.DB);
 
     // Get counts
@@ -98,7 +99,7 @@ export const getDashboardStats = createServerFn({ method: "GET" }).handler(
 export const getContactActivities = createServerFn({ method: "GET" })
   .inputValidator((data: { contactId: string; limit?: number }) => data)
   .handler(async ({ data }) => {
-    const env = (globalThis as any).env as Cloudflare.Env;
+    const env = getEnv();
     const db = getDb(env.DB);
 
     const activityList = await db.query.activities.findMany({

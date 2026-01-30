@@ -1,12 +1,13 @@
 import { createServerFn } from "@tanstack/react-start";
-import { eq, like, desc, or, sql, count } from "drizzle-orm";
-import { getDb, contacts, companies, activities, campaignContacts, emails } from "@/lib/db";
+import { eq, like, desc, or, count } from "drizzle-orm";
+import { getDb, contacts, companies, activities, emails } from "@/lib/db";
+import { getEnv } from "@/lib/env";
 
 // Get all contacts with company info
 export const getContacts = createServerFn({ method: "GET" })
   .inputValidator((data: { search?: string; limit?: number; offset?: number }) => data)
   .handler(async ({ data }) => {
-    const env = (globalThis as any).env as Cloudflare.Env;
+    const env = getEnv();
     const db = getDb(env.DB);
 
     const limit = data?.limit ?? 50;
@@ -54,7 +55,7 @@ export const getContacts = createServerFn({ method: "GET" })
 export const getContact = createServerFn({ method: "GET" })
   .inputValidator((data: { id: string }) => data)
   .handler(async ({ data }) => {
-    const env = (globalThis as any).env as Cloudflare.Env;
+    const env = getEnv();
     const db = getDb(env.DB);
 
     const contact = await db.query.contacts.findFirst({
@@ -95,7 +96,7 @@ export const createContact = createServerFn({ method: "POST" })
     }) => data
   )
   .handler(async ({ data }) => {
-    const env = (globalThis as any).env as Cloudflare.Env;
+    const env = getEnv();
     const db = getDb(env.DB);
 
     let companyId = data.companyId;
@@ -154,7 +155,7 @@ export const updateContact = createServerFn({ method: "POST" })
     }) => data
   )
   .handler(async ({ data }) => {
-    const env = (globalThis as any).env as Cloudflare.Env;
+    const env = getEnv();
     const db = getDb(env.DB);
 
     const { id, tags, ...updates } = data;
@@ -182,7 +183,7 @@ export const updateContact = createServerFn({ method: "POST" })
 export const deleteContact = createServerFn({ method: "POST" })
   .inputValidator((data: { id: string }) => data)
   .handler(async ({ data }) => {
-    const env = (globalThis as any).env as Cloudflare.Env;
+    const env = getEnv();
     const db = getDb(env.DB);
 
     await db.delete(contacts).where(eq(contacts.id, data.id));

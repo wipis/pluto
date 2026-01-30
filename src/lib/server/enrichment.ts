@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { eq, and, inArray } from "drizzle-orm";
 import { getDb, campaignContacts, companies, campaigns, activities } from "@/lib/db";
+import { getEnv } from "@/lib/env";
 import { getProduct } from "@/lib/products";
 
 interface ExaResult {
@@ -45,7 +46,7 @@ async function searchExa(query: string, apiKey: string): Promise<ExaResult[]> {
 export const enrichCompany = createServerFn({ method: "POST" })
   .inputValidator((data: { companyId: string; productId?: string }) => data)
   .handler(async ({ data }) => {
-    const env = (globalThis as any).env as { DB: D1Database; EXA_API_KEY?: string };
+    const env = getEnv();
     const db = getDb(env.DB);
 
     if (!env.EXA_API_KEY) {
@@ -94,7 +95,7 @@ export const enrichCompany = createServerFn({ method: "POST" })
 export const enrichCampaignContacts = createServerFn({ method: "POST" })
   .inputValidator((data: { campaignId: string; contactIds?: string[] }) => data)
   .handler(async ({ data }) => {
-    const env = (globalThis as any).env as { DB: D1Database; EXA_API_KEY?: string };
+    const env = getEnv();
     const db = getDb(env.DB);
 
     if (!env.EXA_API_KEY) {

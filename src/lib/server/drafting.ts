@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { eq, and, inArray } from "drizzle-orm";
 import { getDb, campaignContacts, campaigns, activities } from "@/lib/db";
+import { getEnv } from "@/lib/env";
 import { getProduct } from "@/lib/products";
 
 interface ClaudeMessage {
@@ -65,7 +66,7 @@ function parseEmailResponse(response: string): { subject: string; body: string }
 export const draftCampaignEmails = createServerFn({ method: "POST" })
   .inputValidator((data: { campaignId: string; contactIds?: string[] }) => data)
   .handler(async ({ data }) => {
-    const env = (globalThis as any).env as { DB: D1Database; ANTHROPIC_API_KEY?: string };
+    const env = getEnv();
     const db = getDb(env.DB);
 
     if (!env.ANTHROPIC_API_KEY) {
@@ -198,7 +199,7 @@ BODY:
 export const regenerateDraft = createServerFn({ method: "POST" })
   .inputValidator((data: { campaignContactId: string; feedback?: string }) => data)
   .handler(async ({ data }) => {
-    const env = (globalThis as any).env as { DB: D1Database; ANTHROPIC_API_KEY?: string };
+    const env = getEnv();
     const db = getDb(env.DB);
 
     if (!env.ANTHROPIC_API_KEY) {

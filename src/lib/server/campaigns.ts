@@ -4,10 +4,9 @@ import {
   getDb,
   campaigns,
   campaignContacts,
-  contacts,
-  companies,
   activities,
 } from "@/lib/db";
+import { getEnv } from "@/lib/env";
 import type { ProductId } from "@/lib/products";
 
 // Get all campaigns with counts
@@ -16,7 +15,7 @@ export const getCampaigns = createServerFn({ method: "GET" })
     (data?: { status?: string; product?: string }) => data ?? {}
   )
   .handler(async ({ data }) => {
-    const env = (globalThis as any).env as Cloudflare.Env;
+    const env = getEnv();
     const db = getDb(env.DB);
 
     let baseQuery = db
@@ -63,7 +62,7 @@ export const getCampaigns = createServerFn({ method: "GET" })
 export const getCampaign = createServerFn({ method: "GET" })
   .inputValidator((data: { id: string }) => data)
   .handler(async ({ data }) => {
-    const env = (globalThis as any).env as Cloudflare.Env;
+    const env = getEnv();
     const db = getDb(env.DB);
 
     const campaign = await db.query.campaigns.findFirst({
@@ -94,7 +93,7 @@ export const createCampaign = createServerFn({ method: "POST" })
     }) => data
   )
   .handler(async ({ data }) => {
-    const env = (globalThis as any).env as Cloudflare.Env;
+    const env = getEnv();
     const db = getDb(env.DB);
 
     const [campaign] = await db
@@ -124,7 +123,7 @@ export const updateCampaign = createServerFn({ method: "POST" })
     }) => data
   )
   .handler(async ({ data }) => {
-    const env = (globalThis as any).env as Cloudflare.Env;
+    const env = getEnv();
     const db = getDb(env.DB);
 
     const { id, ...updates } = data;
@@ -145,7 +144,7 @@ export const updateCampaign = createServerFn({ method: "POST" })
 export const addContactsToCampaign = createServerFn({ method: "POST" })
   .inputValidator((data: { campaignId: string; contactIds: string[] }) => data)
   .handler(async ({ data }) => {
-    const env = (globalThis as any).env as Cloudflare.Env;
+    const env = getEnv();
     const db = getDb(env.DB);
 
     // Check for existing campaign contacts to avoid duplicates
@@ -190,7 +189,7 @@ export const addContactsToCampaign = createServerFn({ method: "POST" })
 export const removeContactFromCampaign = createServerFn({ method: "POST" })
   .inputValidator((data: { campaignId: string; contactId: string }) => data)
   .handler(async ({ data }) => {
-    const env = (globalThis as any).env as Cloudflare.Env;
+    const env = getEnv();
     const db = getDb(env.DB);
 
     await db
@@ -209,7 +208,7 @@ export const removeContactFromCampaign = createServerFn({ method: "POST" })
 export const getCampaignContactsByStage = createServerFn({ method: "GET" })
   .inputValidator((data: { campaignId: string; stage?: string }) => data)
   .handler(async ({ data }) => {
-    const env = (globalThis as any).env as Cloudflare.Env;
+    const env = getEnv();
     const db = getDb(env.DB);
 
     let query = db.query.campaignContacts.findMany({

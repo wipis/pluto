@@ -1,11 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { eq, and } from "drizzle-orm";
 import { getDb, campaignContacts } from "@/lib/db";
-
-interface ComposioEnv {
-  DB: D1Database;
-  COMPOSIO_API_KEY?: string;
-}
+import { getEnv } from "@/lib/env";
 
 // Stub: Get Gmail connection status
 export const getGmailConnection = createServerFn({ method: "GET" })
@@ -34,7 +30,7 @@ export const initiateGmailConnection = createServerFn({ method: "POST" })
 export const sendEmail = createServerFn({ method: "POST" })
   .inputValidator((data: { campaignContactId: string }) => data)
   .handler(async ({ data }) => {
-    const env = (globalThis as any).env as ComposioEnv;
+    const env = getEnv();
     const db = getDb(env.DB);
 
     const cc = await db.query.campaignContacts.findFirst({
@@ -58,7 +54,7 @@ export const sendEmail = createServerFn({ method: "POST" })
 export const sendBatch = createServerFn({ method: "POST" })
   .inputValidator((data: { campaignId: string; contactIds?: string[] }) => data)
   .handler(async ({ data }) => {
-    const env = (globalThis as any).env as ComposioEnv;
+    const env = getEnv();
     const db = getDb(env.DB);
 
     const toSend = await db.query.campaignContacts.findMany({
