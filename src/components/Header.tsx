@@ -1,4 +1,4 @@
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import {
   Home,
@@ -11,7 +11,20 @@ import {
   Plus,
   X,
   Settings,
+  LogOut,
+  User as UserIcon,
 } from "lucide-react";
+import { signOut } from "@/lib/auth/client";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Button } from "@/components/ui/button";
+import type { User } from "@/lib/db/schema";
 
 const navItems = [
   { to: "/", label: "Dashboard", icon: Home },
@@ -28,8 +41,22 @@ const quickActions = [
   { to: "/campaigns/new", label: "New Campaign", icon: Plus },
 ];
 
-export default function Header() {
+interface HeaderProps {
+  user: User;
+}
+
+export default function Header({ user }: HeaderProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    try {
+      await signOut();
+    } catch (err) {
+      console.error("Logout failed:", err);
+    }
+    navigate({ to: "/login" });
+  };
 
   return (
     <>
@@ -73,6 +100,34 @@ export default function Header() {
                 {action.label}
               </Link>
             ))}
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" className="gap-2">
+                  <UserIcon size={16} />
+                  <span className="hidden sm:inline">{user.name}</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuLabel>{user.email}</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Link to="/settings" className="cursor-pointer">
+                    <Settings className="mr-2 h-4 w-4" />
+                    Settings
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={handleLogout}
+                  variant="destructive"
+                  className="cursor-pointer"
+                >
+                  <LogOut className="mr-2 h-4 w-4" />
+                  Log out
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </header>
