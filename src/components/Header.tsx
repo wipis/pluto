@@ -11,6 +11,7 @@ import {
   Plus,
   X,
   Settings,
+  Package,
 } from "lucide-react";
 
 const navItems = [
@@ -18,6 +19,7 @@ const navItems = [
   { to: "/contacts", label: "Contacts", icon: Users },
   { to: "/companies", label: "Companies", icon: Building2 },
   { to: "/campaigns", label: "Campaigns", icon: Megaphone },
+  { to: "/products", label: "Products", icon: Package },
   { to: "/review", label: "Review Queue", icon: FileCheck },
   { to: "/settings", label: "Settings", icon: Settings },
 ];

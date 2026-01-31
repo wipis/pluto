@@ -12,9 +12,12 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as ReviewRouteImport } from './routes/review'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ProductsIndexRouteImport } from './routes/products/index'
 import { Route as ContactsIndexRouteImport } from './routes/contacts/index'
 import { Route as CompaniesIndexRouteImport } from './routes/companies/index'
 import { Route as CampaignsIndexRouteImport } from './routes/campaigns/index'
+import { Route as ProductsNewRouteImport } from './routes/products/new'
+import { Route as ProductsIdRouteImport } from './routes/products/$id'
 import { Route as ContactsNewRouteImport } from './routes/contacts/new'
 import { Route as ContactsImportRouteImport } from './routes/contacts/import'
 import { Route as ContactsIdRouteImport } from './routes/contacts/$id'
@@ -37,6 +40,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ProductsIndexRoute = ProductsIndexRouteImport.update({
+  id: '/products/',
+  path: '/products/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ContactsIndexRoute = ContactsIndexRouteImport.update({
   id: '/contacts/',
   path: '/contacts/',
@@ -50,6 +58,16 @@ const CompaniesIndexRoute = CompaniesIndexRouteImport.update({
 const CampaignsIndexRoute = CampaignsIndexRouteImport.update({
   id: '/campaigns/',
   path: '/campaigns/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProductsNewRoute = ProductsNewRouteImport.update({
+  id: '/products/new',
+  path: '/products/new',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProductsIdRoute = ProductsIdRouteImport.update({
+  id: '/products/$id',
+  path: '/products/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ContactsNewRoute = ContactsNewRouteImport.update({
@@ -93,9 +111,12 @@ export interface FileRoutesByFullPath {
   '/contacts/$id': typeof ContactsIdRoute
   '/contacts/import': typeof ContactsImportRoute
   '/contacts/new': typeof ContactsNewRoute
+  '/products/$id': typeof ProductsIdRoute
+  '/products/new': typeof ProductsNewRoute
   '/campaigns/': typeof CampaignsIndexRoute
   '/companies/': typeof CompaniesIndexRoute
   '/contacts/': typeof ContactsIndexRoute
+  '/products/': typeof ProductsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -107,9 +128,12 @@ export interface FileRoutesByTo {
   '/contacts/$id': typeof ContactsIdRoute
   '/contacts/import': typeof ContactsImportRoute
   '/contacts/new': typeof ContactsNewRoute
+  '/products/$id': typeof ProductsIdRoute
+  '/products/new': typeof ProductsNewRoute
   '/campaigns': typeof CampaignsIndexRoute
   '/companies': typeof CompaniesIndexRoute
   '/contacts': typeof ContactsIndexRoute
+  '/products': typeof ProductsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -122,9 +146,12 @@ export interface FileRoutesById {
   '/contacts/$id': typeof ContactsIdRoute
   '/contacts/import': typeof ContactsImportRoute
   '/contacts/new': typeof ContactsNewRoute
+  '/products/$id': typeof ProductsIdRoute
+  '/products/new': typeof ProductsNewRoute
   '/campaigns/': typeof CampaignsIndexRoute
   '/companies/': typeof CompaniesIndexRoute
   '/contacts/': typeof ContactsIndexRoute
+  '/products/': typeof ProductsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -138,9 +165,12 @@ export interface FileRouteTypes {
     | '/contacts/$id'
     | '/contacts/import'
     | '/contacts/new'
+    | '/products/$id'
+    | '/products/new'
     | '/campaigns/'
     | '/companies/'
     | '/contacts/'
+    | '/products/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -152,9 +182,12 @@ export interface FileRouteTypes {
     | '/contacts/$id'
     | '/contacts/import'
     | '/contacts/new'
+    | '/products/$id'
+    | '/products/new'
     | '/campaigns'
     | '/companies'
     | '/contacts'
+    | '/products'
   id:
     | '__root__'
     | '/'
@@ -166,9 +199,12 @@ export interface FileRouteTypes {
     | '/contacts/$id'
     | '/contacts/import'
     | '/contacts/new'
+    | '/products/$id'
+    | '/products/new'
     | '/campaigns/'
     | '/companies/'
     | '/contacts/'
+    | '/products/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -181,9 +217,12 @@ export interface RootRouteChildren {
   ContactsIdRoute: typeof ContactsIdRoute
   ContactsImportRoute: typeof ContactsImportRoute
   ContactsNewRoute: typeof ContactsNewRoute
+  ProductsIdRoute: typeof ProductsIdRoute
+  ProductsNewRoute: typeof ProductsNewRoute
   CampaignsIndexRoute: typeof CampaignsIndexRoute
   CompaniesIndexRoute: typeof CompaniesIndexRoute
   ContactsIndexRoute: typeof ContactsIndexRoute
+  ProductsIndexRoute: typeof ProductsIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -209,6 +248,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/products/': {
+      id: '/products/'
+      path: '/products'
+      fullPath: '/products/'
+      preLoaderRoute: typeof ProductsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/contacts/': {
       id: '/contacts/'
       path: '/contacts'
@@ -228,6 +274,20 @@ declare module '@tanstack/react-router' {
       path: '/campaigns'
       fullPath: '/campaigns/'
       preLoaderRoute: typeof CampaignsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/products/new': {
+      id: '/products/new'
+      path: '/products/new'
+      fullPath: '/products/new'
+      preLoaderRoute: typeof ProductsNewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/products/$id': {
+      id: '/products/$id'
+      path: '/products/$id'
+      fullPath: '/products/$id'
+      preLoaderRoute: typeof ProductsIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/contacts/new': {
@@ -285,9 +345,12 @@ const rootRouteChildren: RootRouteChildren = {
   ContactsIdRoute: ContactsIdRoute,
   ContactsImportRoute: ContactsImportRoute,
   ContactsNewRoute: ContactsNewRoute,
+  ProductsIdRoute: ProductsIdRoute,
+  ProductsNewRoute: ProductsNewRoute,
   CampaignsIndexRoute: CampaignsIndexRoute,
   CompaniesIndexRoute: CompaniesIndexRoute,
   ContactsIndexRoute: ContactsIndexRoute,
+  ProductsIndexRoute: ProductsIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -2,6 +2,26 @@ import { sqliteTable, text, integer, index } from "drizzle-orm/sqlite-core";
 import { relations } from "drizzle-orm";
 import { nanoid } from "nanoid";
 
+// Products table
+export const products = sqliteTable("products", {
+  id: text("id")
+    .primaryKey()
+    .$defaultFn(() => nanoid()),
+  name: text("name").notNull(),
+  description: text("description").notNull(),
+  valueProps: text("value_props").notNull(), // JSON array
+  targetAudience: text("target_audience").notNull(),
+  enrichmentQueryTemplate: text("enrichment_query_template").notNull(), // "{{companyName}} law firm..."
+  emailSystemPrompt: text("email_system_prompt").notNull(),
+  isDefault: integer("is_default", { mode: "boolean" }).default(false),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .$defaultFn(() => new Date()),
+  updatedAt: integer("updated_at", { mode: "timestamp" })
+    .notNull()
+    .$defaultFn(() => new Date()),
+});
+
 // Companies table
 export const companies = sqliteTable(
   "companies",
@@ -162,6 +182,10 @@ export const activities = sqliteTable(
 );
 
 // Relations
+export const productsRelations = relations(products, ({ many }) => ({
+  campaigns: many(campaigns),
+}));
+
 export const companiesRelations = relations(companies, ({ many }) => ({
   contacts: many(contacts),
 }));
@@ -176,7 +200,11 @@ export const contactsRelations = relations(contacts, ({ one, many }) => ({
   activities: many(activities),
 }));
 
-export const campaignsRelations = relations(campaigns, ({ many }) => ({
+export const campaignsRelations = relations(campaigns, ({ one, many }) => ({
+  product: one(products, {
+    fields: [campaigns.product],
+    references: [products.id],
+  }),
   campaignContacts: many(campaignContacts),
   emails: many(emails),
   activities: many(activities),
@@ -219,6 +247,8 @@ export const activitiesRelations = relations(activities, ({ one }) => ({
 }));
 
 // Type exports
+export type Product = typeof products.$inferSelect;
+export type NewProduct = typeof products.$inferInsert;
 export type Company = typeof companies.$inferSelect;
 export type NewCompany = typeof companies.$inferInsert;
 export type Contact = typeof contacts.$inferSelect;

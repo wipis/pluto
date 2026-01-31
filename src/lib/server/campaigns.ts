@@ -5,9 +5,9 @@ import {
   campaigns,
   campaignContacts,
   activities,
+  products,
 } from "@/lib/db";
 import { getEnv } from "@/lib/env";
-import type { ProductId } from "@/lib/products";
 
 // Get all campaigns with counts
 export const getCampaigns = createServerFn({ method: "GET" })
@@ -87,7 +87,7 @@ export const createCampaign = createServerFn({ method: "POST" })
   .inputValidator(
     (data: {
       name: string;
-      product: ProductId;
+      product: string;
       description?: string;
       templatePrompt?: string;
     }) => data
@@ -95,6 +95,15 @@ export const createCampaign = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const env = getEnv();
     const db = getDb(env.DB);
+
+    // Validate product exists
+    const product = await db.query.products.findFirst({
+      where: eq(products.id, data.product),
+    });
+
+    if (!product) {
+      throw new Error("Product not found");
+    }
 
     const [campaign] = await db
       .insert(campaigns)
@@ -116,7 +125,7 @@ export const updateCampaign = createServerFn({ method: "POST" })
     (data: {
       id: string;
       name?: string;
-      product?: ProductId;
+      product?: string;
       description?: string;
       templatePrompt?: string;
       status?: "draft" | "active" | "paused" | "completed";

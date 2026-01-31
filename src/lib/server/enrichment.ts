@@ -1,8 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import { eq, and, inArray } from "drizzle-orm";
-import { getDb, campaignContacts, companies, campaigns, activities } from "@/lib/db";
+import { getDb, campaignContacts, companies, campaigns, activities, products } from "@/lib/db";
 import { getEnv } from "@/lib/env";
-import { getProduct } from "@/lib/products";
+import { buildEnrichmentQuery } from "./products";
 
 interface ExaResult {
   title: string;
@@ -64,8 +64,15 @@ export const enrichCompany = createServerFn({ method: "POST" })
     // Build query based on product or generic
     let query: string;
     if (data.productId) {
-      const product = getProduct(data.productId as any);
-      query = product.enrichmentQuery(company.name);
+      const product = await db.query.products.findFirst({
+        where: eq(products.id, data.productId),
+      });
+      if (product) {
+        query = buildEnrichmentQuery(product.enrichmentQueryTemplate, company.name);
+      } else {
+        console.warn(`Product ${data.productId} not found, using generic enrichment query`);
+        query = `${company.name} ${company.domain || ""} company overview`;
+      }
     } else {
       query = `${company.name} ${company.domain || ""} company overview`;
     }
@@ -111,7 +118,13 @@ export const enrichCampaignContacts = createServerFn({ method: "POST" })
       throw new Error("Campaign not found");
     }
 
-    const product = getProduct(campaign.product as any);
+    const product = await db.query.products.findFirst({
+      where: eq(products.id, campaign.product),
+    });
+
+    if (!product) {
+      throw new Error("Product not found for campaign");
+    }
 
     // Get contacts to enrich
     const toEnrich = await db.query.campaignContacts.findMany({
@@ -142,7 +155,7 @@ export const enrichCampaignContacts = createServerFn({ method: "POST" })
         // Build search query
         const companyName =
           cc.contact.company?.name || cc.contact.email.split("@")[1] || "company";
-        const query = product.enrichmentQuery(companyName);
+        const query = buildEnrichmentQuery(product.enrichmentQueryTemplate, companyName);
 
         // Call Exa
         const exaResults = await searchExa(query, env.EXA_API_KEY);

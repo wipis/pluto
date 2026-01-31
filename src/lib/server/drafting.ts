@@ -1,8 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { eq, and, inArray } from "drizzle-orm";
-import { getDb, campaignContacts, campaigns, activities } from "@/lib/db";
+import { getDb, campaignContacts, campaigns, activities, products } from "@/lib/db";
 import { getEnv } from "@/lib/env";
-import { getProduct } from "@/lib/products";
 
 interface ClaudeMessage {
   role: "user" | "assistant";
@@ -81,7 +80,20 @@ export const draftCampaignEmails = createServerFn({ method: "POST" })
       throw new Error("Campaign not found");
     }
 
-    const product = getProduct(campaign.product as any);
+    const product = await db.query.products.findFirst({
+      where: eq(products.id, campaign.product),
+    });
+
+    if (!product) {
+      throw new Error("Product not found for campaign");
+    }
+
+    let valueProps: string[] = [];
+    try {
+      valueProps = JSON.parse(product.valueProps);
+    } catch {
+      console.error(`Invalid valueProps JSON for product ${product.id}`);
+    }
 
     // Get enriched contacts ready for drafting
     const toDraft = await db.query.campaignContacts.findMany({
@@ -141,7 +153,7 @@ ${enrichmentSummary}
 **What I'm reaching out about:**
 - Product: ${product.name}
 - Description: ${product.description}
-- Key value props: ${product.valueProps.join(", ")}
+- Key value props: ${valueProps.join(", ")}
 - Target audience: ${product.targetAudience}
 
 ${campaign.templatePrompt ? `**Additional context:** ${campaign.templatePrompt}` : ""}
@@ -218,7 +230,20 @@ export const regenerateDraft = createServerFn({ method: "POST" })
       throw new Error("Campaign contact not found");
     }
 
-    const product = getProduct(cc.campaign.product as any);
+    const product = await db.query.products.findFirst({
+      where: eq(products.id, cc.campaign.product),
+    });
+
+    if (!product) {
+      throw new Error("Product not found for campaign");
+    }
+
+    let productValueProps: string[] = [];
+    try {
+      productValueProps = JSON.parse(product.valueProps);
+    } catch {
+      console.error(`Invalid valueProps JSON for product ${product.id}`);
+    }
     const enrichment = cc.enrichmentData ? JSON.parse(cc.enrichmentData) : null;
 
     const enrichmentSummary = enrichment?.results
@@ -266,7 +291,7 @@ ${enrichmentSummary}
 
 **Product:** ${product.name}
 - ${product.description}
-- Value props: ${product.valueProps.join(", ")}
+- Value props: ${productValueProps.join(", ")}
 
 ${cc.campaign.templatePrompt ? `**Additional context:** ${cc.campaign.templatePrompt}` : ""}
 
