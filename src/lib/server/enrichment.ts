@@ -31,7 +31,7 @@ interface SearchExaOptions {
   livecrawl?: "always" | "fallback";
 }
 
-async function searchExa(options: SearchExaOptions): Promise<ExaResult[]> {
+export async function searchExa(options: SearchExaOptions): Promise<ExaResult[]> {
   const {
     query,
     apiKey,
@@ -81,7 +81,7 @@ async function searchExa(options: SearchExaOptions): Promise<ExaResult[]> {
 }
 
 // Multi-query enrichment for comprehensive company research
-async function enrichWithMultiQuery(
+export async function enrichWithMultiQuery(
   companyName: string,
   productQuery: string,
   apiKey: string
@@ -158,7 +158,7 @@ const painPointKeywords: Record<ProductId, {
   },
 };
 
-function scoreEnrichmentQuality(
+export function scoreEnrichmentQuality(
   results: ExaResult[],
   productId: ProductId
 ): { score: number; reasons: string[] } {

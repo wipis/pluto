@@ -265,11 +265,14 @@ export type NewGmailToken = typeof gmailTokens.$inferInsert;
 // Stage type
 export type CampaignContactStage =
   | "new"
+  | "queued_enrich"
   | "enriching"
   | "enriched"
+  | "queued_draft"
   | "drafting"
   | "drafted"
   | "approved"
+  | "queued_send"
   | "sending"
   | "sent"
   | "replied"

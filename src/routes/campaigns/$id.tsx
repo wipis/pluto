@@ -1,10 +1,13 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { getCampaign, updateCampaign, addContactsToCampaign } from "@/lib/server/campaigns";
 import { getContacts } from "@/lib/server/contacts";
-import { enrichCampaignContacts } from "@/lib/server/enrichment";
-import { draftCampaignEmails } from "@/lib/server/drafting";
-import { sendBatch } from "@/lib/server/gmail";
+import {
+  enqueueEnrichment,
+  enqueueDrafting,
+  enqueueSending,
+  getCampaignProgress,
+} from "@/lib/queue/producers";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -43,11 +46,14 @@ import type { CampaignContactStage } from "@/lib/db/schema";
 
 const STAGE_ORDER: CampaignContactStage[] = [
   "new",
+  "queued_enrich",
   "enriching",
   "enriched",
+  "queued_draft",
   "drafting",
   "drafted",
   "approved",
+  "queued_send",
   "sending",
   "sent",
   "replied",
@@ -57,11 +63,14 @@ const STAGE_ORDER: CampaignContactStage[] = [
 
 const STAGE_COLORS: Record<string, string> = {
   new: "bg-gray-100 text-gray-800",
+  queued_enrich: "bg-orange-100 text-orange-800",
   enriching: "bg-yellow-100 text-yellow-800",
   enriched: "bg-blue-100 text-blue-800",
+  queued_draft: "bg-orange-100 text-orange-800",
   drafting: "bg-yellow-100 text-yellow-800",
   drafted: "bg-purple-100 text-purple-800",
   approved: "bg-green-100 text-green-800",
+  queued_send: "bg-orange-100 text-orange-800",
   sending: "bg-yellow-100 text-yellow-800",
   sent: "bg-emerald-100 text-emerald-800",
   replied: "bg-green-200 text-green-900",
@@ -143,70 +152,92 @@ function CampaignDetail() {
     navigate({ to: "/campaigns/$id", params: { id: campaign.id } });
   };
 
+  // Poll for progress when processing
+  const [progress, setProgress] = useState<Awaited<ReturnType<typeof getCampaignProgress>> | null>(null);
+
+  useEffect(() => {
+    if (!isProcessing || !campaign?.id) return;
+
+    const poll = async () => {
+      try {
+        const result = await getCampaignProgress({ data: { campaignId: campaign.id } });
+        setProgress(result);
+
+        // Stop polling if no more queued/processing items
+        if (result.queued === 0 && result.processing === 0) {
+          setIsProcessing(false);
+          setProcessingAction("");
+          navigate({ to: "/campaigns/$id", params: { id: campaign.id } });
+        }
+      } catch (e) {
+        console.error("Failed to poll progress:", e);
+      }
+    };
+
+    poll(); // Initial poll
+    const interval = setInterval(poll, 3000); // Poll every 3 seconds
+
+    return () => clearInterval(interval);
+  }, [isProcessing, campaign?.id, navigate]);
+
   const handleEnrichAll = async () => {
     setIsProcessing(true);
-    setProcessingAction("Enriching contacts...");
+    setProcessingAction("Queuing enrichment jobs...");
     try {
-      const result = await enrichCampaignContacts({ data: { campaignId: campaign.id } });
-      console.log("Enrichment result:", result);
-      if (result.failed > 0) {
-        alert(`Enrichment completed: ${result.enriched} succeeded, ${result.failed} failed.\n${result.errors.join("\n")}`);
-      } else if (result.enriched === 0) {
+      const result = await enqueueEnrichment({ data: { campaignId: campaign.id } });
+      if (result.queued === 0) {
         alert("No contacts to enrich. Make sure contacts are in 'new' stage.");
+        setIsProcessing(false);
+        setProcessingAction("");
       } else {
-        alert(`Successfully enriched ${result.enriched} contacts!`);
+        setProcessingAction(`Enriching ${result.queued} contacts...`);
       }
-      navigate({ to: "/campaigns/$id", params: { id: campaign.id } });
     } catch (error) {
       console.error("Enrichment failed:", error);
       alert(`Enrichment failed: ${error instanceof Error ? error.message : "Unknown error"}`);
+      setIsProcessing(false);
+      setProcessingAction("");
     }
-    setIsProcessing(false);
-    setProcessingAction("");
   };
 
   const handleDraftAll = async () => {
     setIsProcessing(true);
-    setProcessingAction("Drafting emails...");
+    setProcessingAction("Queuing drafting jobs...");
     try {
-      const result = await draftCampaignEmails({ data: { campaignId: campaign.id } });
-      console.log("Drafting result:", result);
-      if (result.failed > 0) {
-        alert(`Drafting completed: ${result.drafted} succeeded, ${result.failed} failed.\n${result.errors.join("\n")}`);
-      } else if (result.drafted === 0) {
+      const result = await enqueueDrafting({ data: { campaignId: campaign.id } });
+      if (result.queued === 0) {
         alert("No contacts to draft. Make sure contacts are in 'enriched' stage.");
+        setIsProcessing(false);
+        setProcessingAction("");
       } else {
-        alert(`Successfully drafted ${result.drafted} emails!`);
+        setProcessingAction(`Drafting ${result.queued} emails...`);
       }
-      navigate({ to: "/campaigns/$id", params: { id: campaign.id } });
     } catch (error) {
       console.error("Drafting failed:", error);
       alert(`Drafting failed: ${error instanceof Error ? error.message : "Unknown error"}`);
+      setIsProcessing(false);
+      setProcessingAction("");
     }
-    setIsProcessing(false);
-    setProcessingAction("");
   };
 
   const handleSendAll = async () => {
     setIsProcessing(true);
-    setProcessingAction("Sending emails...");
+    setProcessingAction("Queuing emails for sending...");
     try {
-      const result = await sendBatch({ data: { campaignId: campaign.id } });
-      console.log("Sending result:", result);
-      if (result.failed > 0) {
-        alert(`Sending completed: ${result.sent} sent, ${result.failed} failed.\n${result.errors.join("\n")}`);
-      } else if (result.sent === 0) {
+      const result = await enqueueSending({ data: { campaignId: campaign.id } });
+      if (result.queued === 0) {
         alert("No emails to send. Make sure emails are approved first.");
+        setIsProcessing(false);
+        setProcessingAction("");
       } else {
-        alert(`Successfully sent ${result.sent} emails!`);
+        setProcessingAction(`Sending ${result.queued} emails (~${result.estimatedMinutes} min)...`);
       }
-      navigate({ to: "/campaigns/$id", params: { id: campaign.id } });
     } catch (error) {
       console.error("Sending failed:", error);
       alert(`Sending failed: ${error instanceof Error ? error.message : "Unknown error"}`);
+      setIsProcessing(false);
+      setProcessingAction("");
     }
-    setIsProcessing(false);
-    setProcessingAction("");
   };
 
   return (

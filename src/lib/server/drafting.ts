@@ -13,7 +13,7 @@ interface ClaudeResponse {
   content: Array<{ type: "text"; text: string }>;
 }
 
-async function callClaude(
+export async function callClaude(
   systemPrompt: string,
   messages: ClaudeMessage[],
   apiKey: string
@@ -42,7 +42,7 @@ async function callClaude(
   return data.content[0]?.text || "";
 }
 
-function parseEmailResponse(response: string): { subject: string; body: string } {
+export function parseEmailResponse(response: string): { subject: string; body: string } {
   // Try to parse SUBJECT: and BODY: format
   const subjectMatch = response.match(/SUBJECT:\s*(.+?)(?:\n|BODY:)/is);
   const bodyMatch = response.match(/BODY:\s*([\s\S]+)/i);
@@ -68,7 +68,7 @@ interface ExtractedHook {
   proofPoint: string;
 }
 
-async function extractHook(
+export async function extractHook(
   enrichmentSummary: string,
   product: Product,
   contact: { name: string; title: string; companyName: string },
@@ -116,7 +116,7 @@ Return ONLY the JSON object, no other text.`;
   }
 }
 
-function buildStructuredPrompt(
+export function buildStructuredPrompt(
   product: Product,
   contact: { name: string; title: string; companyName: string; email: string },
   enrichmentSummary: string,
