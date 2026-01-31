@@ -1,8 +1,8 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "f4e31235-c961-4437-b803-2a70f69e2c74",
-  "prevId": "f21810f0-e01d-4576-b71f-5b0031ba39c9",
+  "id": "6e00f4ca-3362-4158-a3f6-1b61436e573a",
+  "prevId": "f4e31235-c961-4437-b803-2a70f69e2c74",
   "tables": {
     "activities": {
       "name": "activities",
@@ -181,6 +181,35 @@
         },
         "replied_at": {
           "name": "replied_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "regeneration_count": {
+          "name": "regeneration_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "last_feedback": {
+          "name": "last_feedback",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "hook_used": {
+          "name": "hook_used",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "enrichment_score": {
+          "name": "enrichment_score",
           "type": "integer",
           "primaryKey": false,
           "notNull": false,

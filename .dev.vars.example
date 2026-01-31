@@ -1,0 +1,12 @@
+# Copy this file to .dev.vars and fill in your values
+# .dev.vars is gitignored and used for local development
+
+# Gmail OAuth (from Google Cloud Console)
+GMAIL_CLIENT_ID=your-client-id.apps.googleusercontent.com
+GMAIL_CLIENT_SECRET=your-client-secret
+
+# Claude API for email drafting
+ANTHROPIC_API_KEY=sk-ant-...
+
+# Exa API for contact enrichment
+EXA_API_KEY=...

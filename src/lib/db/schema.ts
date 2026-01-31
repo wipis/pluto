@@ -92,6 +92,11 @@ export const campaignContacts = sqliteTable(
     sentAt: integer("sent_at", { mode: "timestamp" }),
     openedAt: integer("opened_at", { mode: "timestamp" }),
     repliedAt: integer("replied_at", { mode: "timestamp" }),
+    // Drafting improvements
+    regenerationCount: integer("regeneration_count").notNull().default(0),
+    lastFeedback: text("last_feedback"),
+    hookUsed: text("hook_used"),
+    enrichmentScore: integer("enrichment_score"),
     createdAt: integer("created_at", { mode: "timestamp" })
       .notNull()
       .$defaultFn(() => new Date()),
@@ -134,6 +139,29 @@ export const emails = sqliteTable(
     index("emails_contact_idx").on(table.contactId),
     index("emails_thread_idx").on(table.threadId),
   ]
+);
+
+// Gmail OAuth tokens
+export const gmailTokens = sqliteTable(
+  "gmail_tokens",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => nanoid()),
+    userEmail: text("user_email").notNull().unique(),
+    accessToken: text("access_token").notNull(),
+    refreshToken: text("refresh_token").notNull(),
+    tokenType: text("token_type").notNull().default("Bearer"),
+    expiresAt: integer("expires_at", { mode: "timestamp" }).notNull(),
+    scope: text("scope"),
+    createdAt: integer("created_at", { mode: "timestamp" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+    updatedAt: integer("updated_at", { mode: "timestamp" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+  },
+  (table) => [index("gmail_tokens_email_idx").on(table.userEmail)]
 );
 
 // Activities for audit trail
@@ -329,15 +357,20 @@ export type Email = typeof emails.$inferSelect;
 export type NewEmail = typeof emails.$inferInsert;
 export type Activity = typeof activities.$inferSelect;
 export type NewActivity = typeof activities.$inferInsert;
+export type GmailToken = typeof gmailTokens.$inferSelect;
+export type NewGmailToken = typeof gmailTokens.$inferInsert;
 
 // Stage type
 export type CampaignContactStage =
   | "new"
+  | "queued_enrich"
   | "enriching"
   | "enriched"
+  | "queued_draft"
   | "drafting"
   | "drafted"
   | "approved"
+  | "queued_send"
   | "sending"
   | "sent"
   | "replied"
@@ -352,6 +385,7 @@ export type ActivityType =
   | "enrichment_started"
   | "enrichment_completed"
   | "draft_created"
+  | "draft_regenerated"
   | "draft_approved"
   | "draft_rejected"
   | "email_sent"
