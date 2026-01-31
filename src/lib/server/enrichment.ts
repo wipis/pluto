@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { eq, and, inArray } from "drizzle-orm";
 import { getDb, campaignContacts, companies, campaigns, activities } from "@/lib/db";
 import { getEnv } from "@/lib/env";
-import { getProduct } from "@/lib/products";
+import { getProduct, type ProductId } from "@/lib/products";
 
 interface ExaResult {
   title: string;
@@ -40,6 +40,90 @@ async function searchExa(query: string, apiKey: string): Promise<ExaResult[]> {
 
   const data: ExaResponse = await response.json();
   return data.results || [];
+}
+
+// Pain-point keywords for quality scoring
+const painPointKeywords: Record<ProductId, {
+  highValue: string[];
+  signals: { growth: string[]; pain: string[] };
+}> = {
+  "file-logic": {
+    highValue: ["medical records", "case volume", "timeline", "compliance", "HIPAA", "backlog", "disability"],
+    signals: {
+      growth: ["hiring", "expanding", "new office", "growth", "new attorneys"],
+      pain: ["delays", "bottleneck", "behind", "struggling", "backlog", "overwhelmed"],
+    },
+  },
+  consulting: {
+    highValue: ["launching", "redesign", "rebuild", "migration", "deadline", "React", "Next.js", "frontend"],
+    signals: {
+      growth: ["Series A", "Series B", "funding", "hiring", "raised"],
+      pain: ["technical debt", "shipping slow", "design gap", "capacity"],
+    },
+  },
+  offerarc: {
+    highValue: ["ad fatigue", "creative testing", "ROAS", "scaling", "CPM", "Facebook ads", "Meta ads"],
+    signals: {
+      growth: ["new clients", "expanding", "team growing", "scaling"],
+      pain: ["creative burnout", "testing velocity", "diminishing returns", "fatigue"],
+    },
+  },
+};
+
+function scoreEnrichmentQuality(
+  results: ExaResult[],
+  productId: ProductId
+): { score: number; reasons: string[] } {
+  const keywords = painPointKeywords[productId];
+  if (!keywords) {
+    return { score: 5, reasons: ["Unknown product"] };
+  }
+
+  let score = 0;
+  const reasons: string[] = [];
+
+  // Combine all text from results
+  const fullText = results
+    .map((r) => [r.title, r.highlights?.join(" "), r.text].filter(Boolean).join(" "))
+    .join(" ")
+    .toLowerCase();
+
+  // Check for high-value keywords (3 points each)
+  for (const keyword of keywords.highValue) {
+    if (fullText.includes(keyword.toLowerCase())) {
+      score += 3;
+      reasons.push(`High-value: "${keyword}"`);
+    }
+  }
+
+  // Check for growth signals (2 points each)
+  for (const term of keywords.signals.growth) {
+    if (fullText.includes(term.toLowerCase())) {
+      score += 2;
+      reasons.push(`Growth signal: "${term}"`);
+    }
+  }
+
+  // Check for pain signals (2 points each)
+  for (const term of keywords.signals.pain) {
+    if (fullText.includes(term.toLowerCase())) {
+      score += 2;
+      reasons.push(`Pain signal: "${term}"`);
+    }
+  }
+
+  // Bonus for having multiple results with content
+  const resultsWithContent = results.filter((r) => r.text && r.text.length > 100);
+  if (resultsWithContent.length >= 3) {
+    score += 2;
+    reasons.push("Rich content available");
+  }
+
+  // Cap at 10
+  return {
+    score: Math.min(score, 10),
+    reasons: reasons.slice(0, 5), // Top 5 reasons
+  };
 }
 
 // Enrich a single company
@@ -147,19 +231,28 @@ export const enrichCampaignContacts = createServerFn({ method: "POST" })
         // Call Exa
         const exaResults = await searchExa(query, env.EXA_API_KEY);
 
+        // Score enrichment quality
+        const qualityScore = scoreEnrichmentQuality(
+          exaResults,
+          campaign.product as ProductId
+        );
+
         const enrichmentData = {
           query,
           companyName,
           results: exaResults,
+          qualityScore: qualityScore.score,
+          qualityReasons: qualityScore.reasons,
           enrichedAt: new Date().toISOString(),
         };
 
-        // Update campaign contact with enrichment
+        // Update campaign contact with enrichment and score
         await db
           .update(campaignContacts)
           .set({
             stage: "enriched",
             enrichmentData: JSON.stringify(enrichmentData),
+            enrichmentScore: qualityScore.score,
             updatedAt: new Date(),
           })
           .where(eq(campaignContacts.id, cc.id));

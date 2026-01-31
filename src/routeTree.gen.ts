@@ -21,6 +21,7 @@ import { Route as ContactsIdRouteImport } from './routes/contacts/$id'
 import { Route as CompaniesIdRouteImport } from './routes/companies/$id'
 import { Route as CampaignsNewRouteImport } from './routes/campaigns/new'
 import { Route as CampaignsIdRouteImport } from './routes/campaigns/$id'
+import { Route as ApiAuthGmailCallbackRouteImport } from './routes/api/auth/gmail/callback'
 
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
@@ -82,6 +83,11 @@ const CampaignsIdRoute = CampaignsIdRouteImport.update({
   path: '/campaigns/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAuthGmailCallbackRoute = ApiAuthGmailCallbackRouteImport.update({
+  id: '/api/auth/gmail/callback',
+  path: '/api/auth/gmail/callback',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -96,6 +102,7 @@ export interface FileRoutesByFullPath {
   '/campaigns/': typeof CampaignsIndexRoute
   '/companies/': typeof CompaniesIndexRoute
   '/contacts/': typeof ContactsIndexRoute
+  '/api/auth/gmail/callback': typeof ApiAuthGmailCallbackRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -110,6 +117,7 @@ export interface FileRoutesByTo {
   '/campaigns': typeof CampaignsIndexRoute
   '/companies': typeof CompaniesIndexRoute
   '/contacts': typeof ContactsIndexRoute
+  '/api/auth/gmail/callback': typeof ApiAuthGmailCallbackRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -125,6 +133,7 @@ export interface FileRoutesById {
   '/campaigns/': typeof CampaignsIndexRoute
   '/companies/': typeof CompaniesIndexRoute
   '/contacts/': typeof ContactsIndexRoute
+  '/api/auth/gmail/callback': typeof ApiAuthGmailCallbackRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -141,6 +150,7 @@ export interface FileRouteTypes {
     | '/campaigns/'
     | '/companies/'
     | '/contacts/'
+    | '/api/auth/gmail/callback'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -155,6 +165,7 @@ export interface FileRouteTypes {
     | '/campaigns'
     | '/companies'
     | '/contacts'
+    | '/api/auth/gmail/callback'
   id:
     | '__root__'
     | '/'
@@ -169,6 +180,7 @@ export interface FileRouteTypes {
     | '/campaigns/'
     | '/companies/'
     | '/contacts/'
+    | '/api/auth/gmail/callback'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -184,6 +196,7 @@ export interface RootRouteChildren {
   CampaignsIndexRoute: typeof CampaignsIndexRoute
   CompaniesIndexRoute: typeof CompaniesIndexRoute
   ContactsIndexRoute: typeof ContactsIndexRoute
+  ApiAuthGmailCallbackRoute: typeof ApiAuthGmailCallbackRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -272,6 +285,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CampaignsIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/auth/gmail/callback': {
+      id: '/api/auth/gmail/callback'
+      path: '/api/auth/gmail/callback'
+      fullPath: '/api/auth/gmail/callback'
+      preLoaderRoute: typeof ApiAuthGmailCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -288,6 +308,7 @@ const rootRouteChildren: RootRouteChildren = {
   CampaignsIndexRoute: CampaignsIndexRoute,
   CompaniesIndexRoute: CompaniesIndexRoute,
   ContactsIndexRoute: ContactsIndexRoute,
+  ApiAuthGmailCallbackRoute: ApiAuthGmailCallbackRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

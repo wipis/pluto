@@ -147,10 +147,19 @@ function CampaignDetail() {
     setIsProcessing(true);
     setProcessingAction("Enriching contacts...");
     try {
-      await enrichCampaignContacts({ data: { campaignId: campaign.id } });
+      const result = await enrichCampaignContacts({ data: { campaignId: campaign.id } });
+      console.log("Enrichment result:", result);
+      if (result.failed > 0) {
+        alert(`Enrichment completed: ${result.enriched} succeeded, ${result.failed} failed.\n${result.errors.join("\n")}`);
+      } else if (result.enriched === 0) {
+        alert("No contacts to enrich. Make sure contacts are in 'new' stage.");
+      } else {
+        alert(`Successfully enriched ${result.enriched} contacts!`);
+      }
       navigate({ to: "/campaigns/$id", params: { id: campaign.id } });
     } catch (error) {
       console.error("Enrichment failed:", error);
+      alert(`Enrichment failed: ${error instanceof Error ? error.message : "Unknown error"}`);
     }
     setIsProcessing(false);
     setProcessingAction("");
@@ -160,10 +169,19 @@ function CampaignDetail() {
     setIsProcessing(true);
     setProcessingAction("Drafting emails...");
     try {
-      await draftCampaignEmails({ data: { campaignId: campaign.id } });
+      const result = await draftCampaignEmails({ data: { campaignId: campaign.id } });
+      console.log("Drafting result:", result);
+      if (result.failed > 0) {
+        alert(`Drafting completed: ${result.drafted} succeeded, ${result.failed} failed.\n${result.errors.join("\n")}`);
+      } else if (result.drafted === 0) {
+        alert("No contacts to draft. Make sure contacts are in 'enriched' stage.");
+      } else {
+        alert(`Successfully drafted ${result.drafted} emails!`);
+      }
       navigate({ to: "/campaigns/$id", params: { id: campaign.id } });
     } catch (error) {
       console.error("Drafting failed:", error);
+      alert(`Drafting failed: ${error instanceof Error ? error.message : "Unknown error"}`);
     }
     setIsProcessing(false);
     setProcessingAction("");
@@ -173,10 +191,19 @@ function CampaignDetail() {
     setIsProcessing(true);
     setProcessingAction("Sending emails...");
     try {
-      await sendBatch({ data: { campaignId: campaign.id } });
+      const result = await sendBatch({ data: { campaignId: campaign.id } });
+      console.log("Sending result:", result);
+      if (result.failed > 0) {
+        alert(`Sending completed: ${result.sent} sent, ${result.failed} failed.\n${result.errors.join("\n")}`);
+      } else if (result.sent === 0) {
+        alert("No emails to send. Make sure emails are approved first.");
+      } else {
+        alert(`Successfully sent ${result.sent} emails!`);
+      }
       navigate({ to: "/campaigns/$id", params: { id: campaign.id } });
     } catch (error) {
       console.error("Sending failed:", error);
+      alert(`Sending failed: ${error instanceof Error ? error.message : "Unknown error"}`);
     }
     setIsProcessing(false);
     setProcessingAction("");
