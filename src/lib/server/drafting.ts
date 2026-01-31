@@ -223,7 +223,8 @@ export const draftCampaignEmails = createServerFn({ method: "POST" })
 
         const enrichmentSummary = enrichment?.results
           ?.map((r: any) =>
-            r.highlights?.join(" ") || r.text?.substring(0, 500)
+            // Prefer summary > highlights > text
+            r.summary || r.highlights?.join(" ") || r.text?.substring(0, 500)
           )
           .filter(Boolean)
           .join("\n\n") || "No research data available.";
@@ -332,7 +333,7 @@ export const regenerateDraft = createServerFn({ method: "POST" })
     const enrichment = cc.enrichmentData ? JSON.parse(cc.enrichmentData) : null;
 
     const enrichmentSummary = enrichment?.results
-      ?.map((r: any) => r.highlights?.join(" ") || r.text?.substring(0, 500))
+      ?.map((r: any) => r.summary || r.highlights?.join(" ") || r.text?.substring(0, 500))
       .filter(Boolean)
       .join("\n\n") || "No research data available.";
 

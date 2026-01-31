@@ -7,30 +7,68 @@ import { getProduct, type ProductId } from "@/lib/products";
 interface ExaResult {
   title: string;
   url: string;
-  text: string;
+  text?: string;
   highlights?: string[];
+  summary?: string;
+  publishedDate?: string;
+  author?: string;
 }
 
 interface ExaResponse {
   results: ExaResult[];
+  autopromptString?: string;
 }
 
-async function searchExa(query: string, apiKey: string): Promise<ExaResult[]> {
+interface SearchExaOptions {
+  query: string;
+  apiKey: string;
+  numResults?: number;
+  category?: "company" | "news" | "tweet" | "github" | "people" | "pdf";
+  useAutoprompt?: boolean;
+  includeDomains?: string[];
+  excludeDomains?: string[];
+  startPublishedDate?: string;
+  livecrawl?: "always" | "fallback";
+}
+
+async function searchExa(options: SearchExaOptions): Promise<ExaResult[]> {
+  const {
+    query,
+    apiKey,
+    numResults = 5,
+    category,
+    useAutoprompt = true,
+    includeDomains,
+    excludeDomains,
+    startPublishedDate,
+    livecrawl,
+  } = options;
+
+  const body: Record<string, unknown> = {
+    query,
+    type: "auto", // Exa 2.1 optimized search
+    numResults,
+    useAutoprompt,
+    contents: {
+      text: { maxCharacters: 2000 },
+      highlights: { numSentences: 5 },
+      summary: { query: "What does this company do and what are their recent achievements or challenges?" },
+    },
+  };
+
+  if (category) body.category = category;
+  if (includeDomains?.length) body.includeDomains = includeDomains;
+  if (excludeDomains?.length) body.excludeDomains = excludeDomains;
+  if (startPublishedDate) body.startPublishedDate = startPublishedDate;
+  if (livecrawl) body.livecrawl = livecrawl;
+
   const response = await fetch("https://api.exa.ai/search", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       "x-api-key": apiKey,
     },
-    body: JSON.stringify({
-      query,
-      type: "neural",
-      numResults: 5,
-      contents: {
-        text: { maxCharacters: 1500 },
-        highlights: { numSentences: 3 },
-      },
-    }),
+    body: JSON.stringify(body),
   });
 
   if (!response.ok) {
@@ -40,6 +78,56 @@ async function searchExa(query: string, apiKey: string): Promise<ExaResult[]> {
 
   const data: ExaResponse = await response.json();
   return data.results || [];
+}
+
+// Multi-query enrichment for comprehensive company research
+async function enrichWithMultiQuery(
+  companyName: string,
+  productQuery: string,
+  apiKey: string
+): Promise<{
+  companyResults: ExaResult[];
+  newsResults: ExaResult[];
+  allResults: ExaResult[];
+}> {
+  // Calculate date 6 months ago for recent content
+  const sixMonthsAgo = new Date();
+  sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+  const startDate = sixMonthsAgo.toISOString().split("T")[0];
+
+  // Run queries in parallel for speed
+  const [companyResults, newsResults] = await Promise.all([
+    // Query 1: Company-focused search with product context
+    searchExa({
+      query: productQuery,
+      apiKey,
+      numResults: 5,
+      useAutoprompt: true,
+      excludeDomains: ["facebook.com", "twitter.com", "instagram.com"],
+    }),
+    // Query 2: Recent news about the company
+    searchExa({
+      query: `${companyName} news announcement growth expansion`,
+      apiKey,
+      numResults: 3,
+      category: "news",
+      startPublishedDate: startDate,
+      useAutoprompt: true,
+    }),
+  ]);
+
+  // Combine and deduplicate by URL
+  const seenUrls = new Set<string>();
+  const allResults: ExaResult[] = [];
+
+  for (const result of [...companyResults, ...newsResults]) {
+    if (!seenUrls.has(result.url)) {
+      seenUrls.add(result.url);
+      allResults.push(result);
+    }
+  }
+
+  return { companyResults, newsResults, allResults };
 }
 
 // Pain-point keywords for quality scoring
@@ -82,9 +170,9 @@ function scoreEnrichmentQuality(
   let score = 0;
   const reasons: string[] = [];
 
-  // Combine all text from results
+  // Combine all text from results (including summaries)
   const fullText = results
-    .map((r) => [r.title, r.highlights?.join(" "), r.text].filter(Boolean).join(" "))
+    .map((r) => [r.title, r.summary, r.highlights?.join(" "), r.text].filter(Boolean).join(" "))
     .join(" ")
     .toLowerCase();
 
@@ -154,7 +242,7 @@ export const enrichCompany = createServerFn({ method: "POST" })
       query = `${company.name} ${company.domain || ""} company overview`;
     }
 
-    const results = await searchExa(query, env.EXA_API_KEY);
+    const results = await searchExa({ query, apiKey: env.EXA_API_KEY });
 
     const enrichmentData = {
       query,
@@ -225,22 +313,36 @@ export const enrichCampaignContacts = createServerFn({ method: "POST" })
 
         // Build search query
         const companyName =
-          cc.contact.company?.name || cc.contact.email.split("@")[1] || "company";
-        const query = product.enrichmentQuery(companyName);
+          cc.contact.company?.name || cc.contact.email.split("@")[1]?.split(".")[0] || "company";
+        const productQuery = product.enrichmentQuery(companyName);
 
-        // Call Exa
-        const exaResults = await searchExa(query, env.EXA_API_KEY);
+        // Call Exa with multi-query approach
+        const { companyResults, newsResults, allResults } = await enrichWithMultiQuery(
+          companyName,
+          productQuery,
+          env.EXA_API_KEY
+        );
 
         // Score enrichment quality
         const qualityScore = scoreEnrichmentQuality(
-          exaResults,
+          allResults,
           campaign.product as ProductId
         );
 
+        // Boost score if we found recent news
+        const hasRecentNews = newsResults.length > 0;
+        if (hasRecentNews) {
+          qualityScore.score = Math.min(qualityScore.score + 2, 10);
+          qualityScore.reasons.unshift("Recent news found");
+        }
+
         const enrichmentData = {
-          query,
+          query: productQuery,
           companyName,
-          results: exaResults,
+          results: allResults,
+          companyResultCount: companyResults.length,
+          newsResultCount: newsResults.length,
+          hasRecentNews,
           qualityScore: qualityScore.score,
           qualityReasons: qualityScore.reasons,
           enrichedAt: new Date().toISOString(),
