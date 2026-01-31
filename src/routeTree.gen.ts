@@ -9,8 +9,10 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SignupRouteImport } from './routes/signup'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as ReviewRouteImport } from './routes/review'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ContactsIndexRouteImport } from './routes/contacts/index'
 import { Route as CompaniesIndexRouteImport } from './routes/companies/index'
@@ -21,8 +23,14 @@ import { Route as ContactsIdRouteImport } from './routes/contacts/$id'
 import { Route as CompaniesIdRouteImport } from './routes/companies/$id'
 import { Route as CampaignsNewRouteImport } from './routes/campaigns/new'
 import { Route as CampaignsIdRouteImport } from './routes/campaigns/$id'
+import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as ApiAuthGmailCallbackRouteImport } from './routes/api/auth/gmail/callback'
 
+const SignupRoute = SignupRouteImport.update({
+  id: '/signup',
+  path: '/signup',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
@@ -31,6 +39,11 @@ const SettingsRoute = SettingsRouteImport.update({
 const ReviewRoute = ReviewRouteImport.update({
   id: '/review',
   path: '/review',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -83,6 +96,11 @@ const CampaignsIdRoute = CampaignsIdRouteImport.update({
   path: '/campaigns/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
+  id: '/api/auth/$',
+  path: '/api/auth/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAuthGmailCallbackRoute = ApiAuthGmailCallbackRouteImport.update({
   id: '/api/auth/gmail/callback',
   path: '/api/auth/gmail/callback',
@@ -91,8 +109,10 @@ const ApiAuthGmailCallbackRoute = ApiAuthGmailCallbackRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/login': typeof LoginRoute
   '/review': typeof ReviewRoute
   '/settings': typeof SettingsRoute
+  '/signup': typeof SignupRoute
   '/campaigns/$id': typeof CampaignsIdRoute
   '/campaigns/new': typeof CampaignsNewRoute
   '/companies/$id': typeof CompaniesIdRoute
@@ -102,12 +122,15 @@ export interface FileRoutesByFullPath {
   '/campaigns/': typeof CampaignsIndexRoute
   '/companies/': typeof CompaniesIndexRoute
   '/contacts/': typeof ContactsIndexRoute
+  '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/auth/gmail/callback': typeof ApiAuthGmailCallbackRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/login': typeof LoginRoute
   '/review': typeof ReviewRoute
   '/settings': typeof SettingsRoute
+  '/signup': typeof SignupRoute
   '/campaigns/$id': typeof CampaignsIdRoute
   '/campaigns/new': typeof CampaignsNewRoute
   '/companies/$id': typeof CompaniesIdRoute
@@ -117,13 +140,16 @@ export interface FileRoutesByTo {
   '/campaigns': typeof CampaignsIndexRoute
   '/companies': typeof CompaniesIndexRoute
   '/contacts': typeof ContactsIndexRoute
+  '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/auth/gmail/callback': typeof ApiAuthGmailCallbackRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/login': typeof LoginRoute
   '/review': typeof ReviewRoute
   '/settings': typeof SettingsRoute
+  '/signup': typeof SignupRoute
   '/campaigns/$id': typeof CampaignsIdRoute
   '/campaigns/new': typeof CampaignsNewRoute
   '/companies/$id': typeof CompaniesIdRoute
@@ -133,14 +159,17 @@ export interface FileRoutesById {
   '/campaigns/': typeof CampaignsIndexRoute
   '/companies/': typeof CompaniesIndexRoute
   '/contacts/': typeof ContactsIndexRoute
+  '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/auth/gmail/callback': typeof ApiAuthGmailCallbackRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/login'
     | '/review'
     | '/settings'
+    | '/signup'
     | '/campaigns/$id'
     | '/campaigns/new'
     | '/companies/$id'
@@ -150,12 +179,15 @@ export interface FileRouteTypes {
     | '/campaigns/'
     | '/companies/'
     | '/contacts/'
+    | '/api/auth/$'
     | '/api/auth/gmail/callback'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/login'
     | '/review'
     | '/settings'
+    | '/signup'
     | '/campaigns/$id'
     | '/campaigns/new'
     | '/companies/$id'
@@ -165,12 +197,15 @@ export interface FileRouteTypes {
     | '/campaigns'
     | '/companies'
     | '/contacts'
+    | '/api/auth/$'
     | '/api/auth/gmail/callback'
   id:
     | '__root__'
     | '/'
+    | '/login'
     | '/review'
     | '/settings'
+    | '/signup'
     | '/campaigns/$id'
     | '/campaigns/new'
     | '/companies/$id'
@@ -180,13 +215,16 @@ export interface FileRouteTypes {
     | '/campaigns/'
     | '/companies/'
     | '/contacts/'
+    | '/api/auth/$'
     | '/api/auth/gmail/callback'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  LoginRoute: typeof LoginRoute
   ReviewRoute: typeof ReviewRoute
   SettingsRoute: typeof SettingsRoute
+  SignupRoute: typeof SignupRoute
   CampaignsIdRoute: typeof CampaignsIdRoute
   CampaignsNewRoute: typeof CampaignsNewRoute
   CompaniesIdRoute: typeof CompaniesIdRoute
@@ -196,11 +234,19 @@ export interface RootRouteChildren {
   CampaignsIndexRoute: typeof CampaignsIndexRoute
   CompaniesIndexRoute: typeof CompaniesIndexRoute
   ContactsIndexRoute: typeof ContactsIndexRoute
+  ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiAuthGmailCallbackRoute: typeof ApiAuthGmailCallbackRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/signup': {
+      id: '/signup'
+      path: '/signup'
+      fullPath: '/signup'
+      preLoaderRoute: typeof SignupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/settings': {
       id: '/settings'
       path: '/settings'
@@ -213,6 +259,13 @@ declare module '@tanstack/react-router' {
       path: '/review'
       fullPath: '/review'
       preLoaderRoute: typeof ReviewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -285,6 +338,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CampaignsIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/auth/$': {
+      id: '/api/auth/$'
+      path: '/api/auth/$'
+      fullPath: '/api/auth/$'
+      preLoaderRoute: typeof ApiAuthSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/auth/gmail/callback': {
       id: '/api/auth/gmail/callback'
       path: '/api/auth/gmail/callback'
@@ -297,8 +357,10 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  LoginRoute: LoginRoute,
   ReviewRoute: ReviewRoute,
   SettingsRoute: SettingsRoute,
+  SignupRoute: SignupRoute,
   CampaignsIdRoute: CampaignsIdRoute,
   CampaignsNewRoute: CampaignsNewRoute,
   CompaniesIdRoute: CompaniesIdRoute,
@@ -308,6 +370,7 @@ const rootRouteChildren: RootRouteChildren = {
   CampaignsIndexRoute: CampaignsIndexRoute,
   CompaniesIndexRoute: CompaniesIndexRoute,
   ContactsIndexRoute: ContactsIndexRoute,
+  ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiAuthGmailCallbackRoute: ApiAuthGmailCallbackRoute,
 }
 export const routeTree = rootRouteImport
