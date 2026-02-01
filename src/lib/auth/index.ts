@@ -25,8 +25,14 @@ export function getAuth() {
       minPasswordLength: 8,
       signUp: {
         async beforeCreate({ email }) {
-          const allowedEmails = ["angela@filelogic.ai", "bridger@filelogic.ai"];
-          if (!allowedEmails.includes(email.toLowerCase())) {
+          // ALLOWED_EMAILS is a comma-separated list of emails
+          const allowedEmailsRaw = env.ALLOWED_EMAILS || "";
+          const allowedEmails = allowedEmailsRaw
+            .split(",")
+            .map((e) => e.trim().toLowerCase())
+            .filter(Boolean);
+
+          if (allowedEmails.length > 0 && !allowedEmails.includes(email.toLowerCase())) {
             throw new Error("Signups are restricted to invited users only");
           }
         },

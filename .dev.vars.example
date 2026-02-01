@@ -10,3 +10,9 @@ ANTHROPIC_API_KEY=sk-ant-...
 
 # Exa API for contact enrichment
 EXA_API_KEY=...
+
+# Better Auth session encryption
+BETTER_AUTH_SECRET=generate-a-random-32-char-string
+
+# Allowed signup emails (comma-separated, empty = allow all)
+ALLOWED_EMAILS=user@example.com

@@ -1,290 +1,343 @@
-Welcome to your new TanStack app! 
+# Pluto
 
-# Getting Started
+A lightweight outreach CRM for managing cold email campaigns with AI-powered research and drafting.
 
-To run this application:
+**Core workflow:** Import CSV → Enrich (Exa) → Draft (Claude) → Review/Edit → Send (Gmail) → Track Replies
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|------------|
+| Framework | [TanStack Start](https://tanstack.com/start) (React, file-based routing, SSR) |
+| Runtime | [Cloudflare Workers](https://developers.cloudflare.com/workers/) |
+| Database | [Cloudflare D1](https://developers.cloudflare.com/d1/) (SQLite) via [Drizzle ORM](https://orm.drizzle.team/) |
+| Background Jobs | [Cloudflare Queues](https://developers.cloudflare.com/queues/) |
+| AI | [Anthropic Claude API](https://docs.anthropic.com/) |
+| Research | [Exa API](https://docs.exa.ai/) |
+| Email | Gmail API (OAuth2) |
+| Styling | [Tailwind CSS v4](https://tailwindcss.com/) + [shadcn/ui](https://ui.shadcn.com/) |
+
+## Getting Started
+
+### Prerequisites
+
+- Node.js 20+
+- pnpm 9+
+- [Wrangler CLI](https://developers.cloudflare.com/workers/wrangler/install-and-update/) (for local D1 and deployment)
+
+### Installation
 
 ```bash
+# Clone and install dependencies
+git clone <repo-url>
+cd pluto
 pnpm install
-pnpm start
+
+# Generate Cloudflare types
+pnpm cf-typegen
+
+# Set up local database
+pnpm db:migrate
 ```
 
-# Building For Production
+### Environment Setup
 
-To build this application for production:
+Create a `.dev.vars` file for local development secrets:
 
 ```bash
-pnpm build
+ANTHROPIC_API_KEY=sk-ant-...
+EXA_API_KEY=...
+GMAIL_CLIENT_ID=...
+GMAIL_CLIENT_SECRET=...
+BETTER_AUTH_SECRET=...
+ALLOWED_EMAILS=user1@example.com,user2@example.com
 ```
 
-## Testing
+Note: `ALLOWED_EMAILS` is a comma-separated list of emails permitted to sign up. Leave empty to allow all emails.
 
-This project uses [Vitest](https://vitest.dev/) for testing. You can run the tests with:
+For production, set secrets via Wrangler:
 
 ```bash
-pnpm test
+wrangler secret put ANTHROPIC_API_KEY
+wrangler secret put EXA_API_KEY
+wrangler secret put GMAIL_CLIENT_ID
+wrangler secret put GMAIL_CLIENT_SECRET
+wrangler secret put BETTER_AUTH_SECRET
 ```
 
-## Styling
+To restrict signups, update `ALLOWED_EMAILS` in `wrangler.jsonc` or set it as a secret.
 
-This project uses [Tailwind CSS](https://tailwindcss.com/) for styling.
+### Running Locally
 
-
-
-
-## Routing
-This project uses [TanStack Router](https://tanstack.com/router). The initial setup is a file based router. Which means that the routes are managed as files in `src/routes`.
-
-### Adding A Route
-
-To add a new route to your application just add another a new file in the `./src/routes` directory.
-
-TanStack will automatically generate the content of the route file for you.
-
-Now that you have two routes you can use a `Link` component to navigate between them.
-
-### Adding Links
-
-To use SPA (Single Page Application) navigation you will need to import the `Link` component from `@tanstack/react-router`.
-
-```tsx
-import { Link } from "@tanstack/react-router";
+```bash
+pnpm dev
 ```
 
-Then anywhere in your JSX you can use it like so:
+Open [http://localhost:3000](http://localhost:3000).
 
-```tsx
-<Link to="/about">About</Link>
+## Development
+
+### Commands
+
+| Command | Description |
+|---------|-------------|
+| `pnpm dev` | Start dev server on port 3000 |
+| `pnpm build` | Build for production |
+| `pnpm test` | Run Vitest tests |
+| `pnpm deploy` | Build and deploy to Cloudflare |
+| `pnpm cf-typegen` | Regenerate Cloudflare runtime types |
+| `pnpm db:generate` | Generate Drizzle migration from schema changes |
+| `pnpm db:migrate` | Apply migrations to local D1 |
+| `pnpm db:migrate:prod` | Apply migrations to production D1 |
+
+### Project Structure
+
+```
+src/
+├── routes/                 # File-based routing (TanStack Router)
+│   ├── __root.tsx          # Root layout
+│   ├── index.tsx           # Dashboard
+│   ├── review.tsx          # Draft review queue
+│   ├── contacts/           # Contact management
+│   ├── companies/          # Company management
+│   └── campaigns/          # Campaign management
+├── components/
+│   ├── ui/                 # shadcn/ui components
+│   └── *.tsx               # App components
+├── lib/
+│   ├── db/
+│   │   ├── schema.ts       # Drizzle schema (all tables)
+│   │   └── index.ts        # Database helper
+│   ├── server/             # Server functions (createServerFn)
+│   ├── queue/
+│   │   ├── types.ts        # Job message types
+│   │   └── processors.ts   # Queue job handlers
+│   ├── env.ts              # Cloudflare env access
+│   └── utils.ts            # Utilities (cn, etc.)
+├── worker.ts               # Cloudflare Worker entry point
+└── router.tsx              # Router configuration
 ```
 
-This will create a link that will navigate to the `/about` route.
+### Adding a New Route
 
-More information on the `Link` component can be found in the [Link documentation](https://tanstack.com/router/v1/docs/framework/react/api/router/linkComponent).
-
-### Using A Layout
-
-In the File Based Routing setup the layout is located in `src/routes/__root.tsx`. Anything you add to the root route will appear in all the routes. The route content will appear in the JSX where you use the `<Outlet />` component.
-
-Here is an example layout that includes a header:
+Create a file in `src/routes/`. TanStack Router auto-generates route types.
 
 ```tsx
-import { Outlet, createRootRoute } from '@tanstack/react-router'
-import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
+// src/routes/example.tsx
+import { createFileRoute } from '@tanstack/react-router'
 
-import { Link } from "@tanstack/react-router";
-
-export const Route = createRootRoute({
-  component: () => (
-    <>
-      <header>
-        <nav>
-          <Link to="/">Home</Link>
-          <Link to="/about">About</Link>
-        </nav>
-      </header>
-      <Outlet />
-      <TanStackRouterDevtools />
-    </>
-  ),
+export const Route = createFileRoute('/example')({
+  component: ExamplePage,
 })
-```
 
-The `<TanStackRouterDevtools />` component is not required so you can remove it if you don't want it in your layout.
-
-More information on layouts can be found in the [Layouts documentation](https://tanstack.com/router/latest/docs/framework/react/guide/routing-concepts#layouts).
-
-
-## Data Fetching
-
-There are multiple ways to fetch data in your application. You can use TanStack Query to fetch data from a server. But you can also use the `loader` functionality built into TanStack Router to load the data for a route before it's rendered.
-
-For example:
-
-```tsx
-const peopleRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: "/people",
-  loader: async () => {
-    const response = await fetch("https://swapi.dev/api/people");
-    return response.json() as Promise<{
-      results: {
-        name: string;
-      }[];
-    }>;
-  },
-  component: () => {
-    const data = peopleRoute.useLoaderData();
-    return (
-      <ul>
-        {data.results.map((person) => (
-          <li key={person.name}>{person.name}</li>
-        ))}
-      </ul>
-    );
-  },
-});
-```
-
-Loaders simplify your data fetching logic dramatically. Check out more information in the [Loader documentation](https://tanstack.com/router/latest/docs/framework/react/guide/data-loading#loader-parameters).
-
-### React-Query
-
-React-Query is an excellent addition or alternative to route loading and integrating it into you application is a breeze.
-
-First add your dependencies:
-
-```bash
-pnpm add @tanstack/react-query @tanstack/react-query-devtools
-```
-
-Next we'll need to create a query client and provider. We recommend putting those in `main.tsx`.
-
-```tsx
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-
-// ...
-
-const queryClient = new QueryClient();
-
-// ...
-
-if (!rootElement.innerHTML) {
-  const root = ReactDOM.createRoot(rootElement);
-
-  root.render(
-    <QueryClientProvider client={queryClient}>
-      <RouterProvider router={router} />
-    </QueryClientProvider>
-  );
+function ExamplePage() {
+  return <div>Example</div>
 }
 ```
 
-You can also add TanStack Query Devtools to the root route (optional).
+Dynamic routes use `$param` syntax: `src/routes/contacts/$id.tsx`
+
+### Creating Server Functions
+
+Server functions run on Cloudflare Workers. Use `createServerFn` from TanStack Start:
 
 ```tsx
-import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
+// src/lib/server/example.ts
+import { createServerFn } from "@tanstack/react-start";
+import { getEnv } from "@/lib/env";
+import { getDb } from "@/lib/db";
 
-const rootRoute = createRootRoute({
-  component: () => (
-    <>
-      <Outlet />
-      <ReactQueryDevtools buttonPosition="top-right" />
-      <TanStackRouterDevtools />
-    </>
-  ),
-});
-```
+export const getExample = createServerFn({ method: "GET" })
+  .inputValidator((data: { id: string }) => data)
+  .handler(async ({ data }) => {
+    const env = getEnv();
+    const db = getDb(env.DB);
 
-Now you can use `useQuery` to fetch your data.
+    // Query database
+    const result = await db.query.examples.findFirst({
+      where: eq(examples.id, data.id),
+    });
 
-```tsx
-import { useQuery } from "@tanstack/react-query";
-
-import "./App.css";
-
-function App() {
-  const { data } = useQuery({
-    queryKey: ["people"],
-    queryFn: () =>
-      fetch("https://swapi.dev/api/people")
-        .then((res) => res.json())
-        .then((data) => data.results as { name: string }[]),
-    initialData: [],
+    return result;
   });
 
-  return (
-    <div>
-      <ul>
-        {data.map((person) => (
-          <li key={person.name}>{person.name}</li>
-        ))}
-      </ul>
-    </div>
-  );
-}
+export const createExample = createServerFn({ method: "POST" })
+  .inputValidator((data: { name: string }) => data)
+  .handler(async ({ data }) => {
+    const env = getEnv();
+    const db = getDb(env.DB);
 
-export default App;
+    const [created] = await db
+      .insert(examples)
+      .values({ name: data.name })
+      .returning();
+
+    return created;
+  });
 ```
 
-You can find out everything you need to know on how to use React-Query in the [React-Query documentation](https://tanstack.com/query/latest/docs/framework/react/overview).
+Call from components:
 
-## State Management
+```tsx
+// In a route or component
+const data = await getExample({ data: { id: "123" } });
+```
 
-Another common requirement for React applications is state management. There are many options for state management in React. TanStack Store provides a great starting point for your project.
+### Database Schema
 
-First you need to add TanStack Store as a dependency:
+Schema is defined in `src/lib/db/schema.ts` using Drizzle ORM.
+
+**Core tables:**
+- `products` - Product configurations with prompt templates
+- `companies` - Company records with enrichment data
+- `contacts` - Contact records linked to companies
+- `campaigns` - Campaign configurations
+- `campaign_contacts` - Junction table with pipeline state
+- `emails` - Email history and tracking
+- `activities` - Audit log
+- `gmail_tokens` - OAuth token storage
+
+**Modifying the schema:**
+
+1. Edit `src/lib/db/schema.ts`
+2. Generate migration: `pnpm db:generate`
+3. Apply locally: `pnpm db:migrate`
+4. Apply to production: `pnpm db:migrate:prod`
+
+### Campaign Contact Pipeline
+
+Each contact in a campaign moves through stages:
+
+```
+new → queued_enrich → enriching → enriched → queued_draft → drafting → drafted → approved → queued_send → sending → sent
+                                                                                                                    ↓
+                                                                                              replied | bounced | skipped
+```
+
+Stage transitions are managed by:
+- **UI actions** - User approves/skips drafts
+- **Queue processors** - Background jobs for enrichment, drafting, sending
+
+### Background Jobs (Cloudflare Queues)
+
+The worker (`src/worker.ts`) processes queue messages. Job types:
+
+| Type | Purpose | Processor |
+|------|---------|-----------|
+| `enrich` | Fetch company research via Exa | `processEnrichment` |
+| `draft` | Generate email via Claude | `processDrafting` |
+| `send` | Send email via Gmail | `processSending` |
+| `check_replies` | Poll for email replies | `processReplyCheck` |
+
+Enqueue a job:
+
+```typescript
+await env.JOBS_QUEUE.send({
+  type: "enrich",
+  campaignContactId: cc.id,
+  campaignId: campaign.id,
+});
+```
+
+### Adding UI Components
+
+This project uses [shadcn/ui](https://ui.shadcn.com/). Add components via CLI:
 
 ```bash
-pnpm add @tanstack/store
+npx shadcn@latest add button
+npx shadcn@latest add card
+npx shadcn@latest add dialog
 ```
 
-Now let's create a simple counter in the `src/App.tsx` file as a demonstration.
+Components are added to `src/components/ui/`.
 
-```tsx
-import { useStore } from "@tanstack/react-store";
-import { Store } from "@tanstack/store";
-import "./App.css";
+**Icons:**
+- Primary: `@hugeicons/react` - `import { IconName } from "@hugeicons/react"`
+- Secondary: `lucide-react` - `import { IconName } from "lucide-react"`
 
-const countStore = new Store(0);
+### Testing
 
-function App() {
-  const count = useStore(countStore);
-  return (
-    <div>
-      <button onClick={() => countStore.setState((n) => n + 1)}>
-        Increment - {count}
-      </button>
-    </div>
-  );
-}
+Tests use [Vitest](https://vitest.dev/) with setup in `test/setup.ts`.
 
-export default App;
+```bash
+# Run all tests
+pnpm test
+
+# Run tests in watch mode
+pnpm test --watch
+
+# Run specific test file
+pnpm test src/lib/example.test.ts
 ```
 
-One of the many nice features of TanStack Store is the ability to derive state from other state. That derived state will update when the base state updates.
+Test files should be co-located: `example.ts` → `example.test.ts`
 
-Let's check this out by doubling the count using derived state.
+## External Services
 
-```tsx
-import { useStore } from "@tanstack/react-store";
-import { Store, Derived } from "@tanstack/store";
-import "./App.css";
+### Exa API (Research)
 
-const countStore = new Store(0);
+Used for company enrichment. See `src/lib/server/enrichment.ts`.
 
-const doubledStore = new Derived({
-  fn: () => countStore.state * 2,
-  deps: [countStore],
-});
-doubledStore.mount();
-
-function App() {
-  const count = useStore(countStore);
-  const doubledCount = useStore(doubledStore);
-
-  return (
-    <div>
-      <button onClick={() => countStore.setState((n) => n + 1)}>
-        Increment - {count}
-      </button>
-      <div>Doubled - {doubledCount}</div>
-    </div>
-  );
-}
-
-export default App;
+```typescript
+// Multi-query enrichment with company info + recent news
+const { companyResults, newsResults } = await enrichWithMultiQuery(
+  companyName,
+  productQuery,
+  env.EXA_API_KEY
+);
 ```
 
-We use the `Derived` class to create a new store that is derived from another store. The `Derived` class has a `mount` method that will start the derived store updating.
+### Claude API (Drafting)
 
-Once we've created the derived store we can use it in the `App` component just like we would any other store using the `useStore` hook.
+Used for email generation. See `src/lib/server/drafting.ts`.
 
-You can find out everything you need to know on how to use TanStack Store in the [TanStack Store documentation](https://tanstack.com/store/latest).
+The drafting pipeline:
+1. Extract a "hook" from enrichment data
+2. Build structured prompt with product context
+3. Generate personalized email (<150 words)
 
-# Demo files
+### Gmail API
 
-Files prefixed with `demo` can be safely deleted. They are there to provide a starting point for you to play around with the features you've installed.
+OAuth flow and email sending. See `src/lib/server/gmail*.ts`.
 
-# Learn More
+- `gmail-auth.ts` - OAuth token management
+- `gmail-api.ts` - Raw Gmail API calls
+- `gmail.ts` - High-level send/reply functions
 
-You can learn more about all of the offerings from TanStack in the [TanStack documentation](https://tanstack.com).
+## Deployment
+
+Deploy to Cloudflare:
+
+```bash
+pnpm deploy
+```
+
+This builds the app and deploys via Wrangler. Ensure production secrets are set first.
+
+### Production Checklist
+
+- [ ] Set all secrets via `wrangler secret put`
+- [ ] Run `pnpm db:migrate:prod` for schema changes
+- [ ] Verify queue bindings in `wrangler.jsonc`
+
+## Architecture Decisions
+
+**Why TanStack Start?**
+- File-based routing with type-safe server functions
+- SSR support with Cloudflare Workers compatibility
+- Modern React 19 features
+
+**Why Cloudflare D1?**
+- SQLite at the edge with zero cold starts
+- Integrated with Workers runtime
+- Cost-effective for single-user apps
+
+**Why Cloudflare Queues?**
+- Reliable background job processing
+- Automatic retries with dead-letter queue
+- Native Workers integration
+
+**Why separate enrichment → drafting stages?**
+- Allows review of research quality before drafting
+- Enables batch operations at each stage
+- Provides clear audit trail

@@ -86,6 +86,7 @@ export const campaigns = sqliteTable("campaigns", {
   description: text("description"),
   templatePrompt: text("template_prompt"), // Custom instructions for Claude
   status: text("status").notNull().default("draft"), // draft | active | paused | completed
+  gmailAccountId: text("gmail_account_id"), // Which Gmail account to send from
   createdAt: integer("created_at", { mode: "timestamp" })
     .notNull()
     .$defaultFn(() => new Date()),
@@ -165,14 +166,15 @@ export const emails = sqliteTable(
   ]
 );
 
-// Gmail OAuth tokens
+// Gmail OAuth tokens (supports multiple accounts)
 export const gmailTokens = sqliteTable(
   "gmail_tokens",
   {
     id: text("id")
       .primaryKey()
       .$defaultFn(() => nanoid()),
-    userEmail: text("user_email").notNull().unique(),
+    userEmail: text("user_email").notNull(), // No longer unique - allows reconnecting
+    label: text("label"), // Optional display name like "Work Gmail"
     accessToken: text("access_token").notNull(),
     refreshToken: text("refresh_token").notNull(),
     tokenType: text("token_type").notNull().default("Bearer"),

@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { getCampaign, updateCampaign, addContactsToCampaign } from "@/lib/server/campaigns";
 import { getContacts } from "@/lib/server/contacts";
+import { getGmailAccounts } from "@/lib/server/gmail-auth";
 import {
   enqueueEnrichment,
   enqueueDrafting,
@@ -41,6 +42,7 @@ import {
   Play,
   Pause,
   CheckCircle2,
+  Mail,
 } from "lucide-react";
 import type { CampaignContactStage } from "@/lib/db/schema";
 
@@ -81,14 +83,17 @@ const STAGE_COLORS: Record<string, string> = {
 export const Route = createFileRoute("/campaigns/$id")({
   component: CampaignDetail,
   loader: async ({ params }) => {
-    const campaign = await getCampaign({ data: { id: params.id } });
-    const { contacts } = await getContacts({ data: {} });
-    return { campaign, allContacts: contacts };
+    const [campaign, { contacts }, gmailAccounts] = await Promise.all([
+      getCampaign({ data: { id: params.id } }),
+      getContacts({ data: {} }),
+      getGmailAccounts(),
+    ]);
+    return { campaign, allContacts: contacts, gmailAccounts };
   },
 });
 
 function CampaignDetail() {
-  const { campaign, allContacts } = Route.useLoaderData();
+  const { campaign, allContacts, gmailAccounts } = Route.useLoaderData();
   const navigate = useNavigate();
   const [isEditing, setIsEditing] = useState(false);
   const [showAddContacts, setShowAddContacts] = useState(false);
@@ -101,11 +106,13 @@ function CampaignDetail() {
     description: string;
     templatePrompt: string;
     status: "draft" | "active" | "paused" | "completed";
+    gmailAccountId: string;
   }>({
     name: campaign?.name || "",
     description: campaign?.description || "",
     templatePrompt: campaign?.templatePrompt || "",
     status: (campaign?.status as "draft" | "active" | "paused" | "completed") || "draft",
+    gmailAccountId: campaign?.gmailAccountId || "",
   });
 
   if (!campaign) {
@@ -137,7 +144,13 @@ function CampaignDetail() {
   );
 
   const handleSave = async () => {
-    await updateCampaign({ data: { id: campaign.id, ...formData } });
+    await updateCampaign({
+      data: {
+        id: campaign.id,
+        ...formData,
+        gmailAccountId: formData.gmailAccountId || undefined,
+      },
+    });
     setIsEditing(false);
     navigate({ to: "/campaigns/$id", params: { id: campaign.id } });
   };
@@ -266,7 +279,7 @@ function CampaignDetail() {
             ) : (
               <CardTitle className="text-xl">{campaign.name}</CardTitle>
             )}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <Badge variant="outline">{campaign.product}</Badge>
               {isEditing ? (
                 <Select
@@ -291,6 +304,44 @@ function CampaignDetail() {
                 >
                   {campaign.status}
                 </Badge>
+              )}
+              {gmailAccounts.length > 0 && (
+                <>
+                  {isEditing ? (
+                    <Select
+                      value={formData.gmailAccountId}
+                      onValueChange={(value) =>
+                        setFormData({ ...formData, gmailAccountId: value })
+                      }
+                    >
+                      <SelectTrigger className="w-56">
+                        <SelectValue placeholder="Select sender..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {gmailAccounts.map((account) => (
+                          <SelectItem key={account.id} value={account.id}>
+                            <div className="flex items-center gap-2">
+                              <Mail className="h-4 w-4" />
+                              {account.label || account.userEmail}
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    (() => {
+                      const selectedAccount = gmailAccounts.find(
+                        (a) => a.id === campaign.gmailAccountId
+                      );
+                      return selectedAccount ? (
+                        <Badge variant="outline" className="flex items-center gap-1">
+                          <Mail className="h-3 w-3" />
+                          {selectedAccount.label || selectedAccount.userEmail}
+                        </Badge>
+                      ) : null;
+                    })()
+                  )}
+                </>
               )}
             </div>
           </div>

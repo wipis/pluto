@@ -90,6 +90,7 @@ export const createCampaign = createServerFn({ method: "POST" })
       product: string;
       description?: string;
       templatePrompt?: string;
+      gmailAccountId?: string;
     }) => data
   )
   .handler(async ({ data }) => {
@@ -112,6 +113,7 @@ export const createCampaign = createServerFn({ method: "POST" })
         product: data.product,
         description: data.description,
         templatePrompt: data.templatePrompt,
+        gmailAccountId: data.gmailAccountId,
         status: "draft",
       })
       .returning();
@@ -129,6 +131,7 @@ export const updateCampaign = createServerFn({ method: "POST" })
       description?: string;
       templatePrompt?: string;
       status?: "draft" | "active" | "paused" | "completed";
+      gmailAccountId?: string;
     }) => data
   )
   .handler(async ({ data }) => {

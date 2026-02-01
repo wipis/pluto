@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { createCampaign } from "@/lib/server/campaigns";
 import { getProducts } from "@/lib/server/products";
+import { getGmailAccounts } from "@/lib/server/gmail-auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,22 +15,29 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ArrowLeft, Save } from "lucide-react";
+import { ArrowLeft, Save, Mail } from "lucide-react";
 
 export const Route = createFileRoute("/campaigns/new")({
   component: NewCampaign,
-  loader: () => getProducts(),
+  loader: async () => {
+    const [products, gmailAccounts] = await Promise.all([
+      getProducts(),
+      getGmailAccounts(),
+    ]);
+    return { products, gmailAccounts };
+  },
 });
 
 function NewCampaign() {
   const navigate = useNavigate();
-  const products = Route.useLoaderData();
+  const { products, gmailAccounts } = Route.useLoaderData();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     product: "",
     description: "",
     templatePrompt: "",
+    gmailAccountId: gmailAccounts[0]?.id || "",
   });
 
   const selectedProduct = products.find((p) => p.id === formData.product);
@@ -55,6 +63,7 @@ function NewCampaign() {
           product: formData.product,
           description: formData.description || undefined,
           templatePrompt: formData.templatePrompt || undefined,
+          gmailAccountId: formData.gmailAccountId || undefined,
         },
       });
       navigate({ to: "/campaigns/$id", params: { id: campaign.id } });
@@ -119,6 +128,37 @@ function NewCampaign() {
                   </SelectContent>
                 </Select>
               </div>
+
+              {gmailAccounts.length > 0 && (
+                <div>
+                  <Label htmlFor="gmailAccount">
+                    Send From <span className="text-destructive">*</span>
+                  </Label>
+                  <Select
+                    value={formData.gmailAccountId}
+                    onValueChange={(value) =>
+                      setFormData({ ...formData, gmailAccountId: value })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select sender account..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {gmailAccounts.map((account) => (
+                        <SelectItem key={account.id} value={account.id}>
+                          <div className="flex items-center gap-2">
+                            <Mail className="h-4 w-4" />
+                            {account.label || account.userEmail}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Emails will be sent from this Gmail account
+                  </p>
+                </div>
+              )}
 
               <div>
                 <Label htmlFor="description">Description</Label>

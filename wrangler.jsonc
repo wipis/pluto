@@ -38,6 +38,9 @@
 				"dead_letter_queue": "pluto-jobs-dlq"
 			}
 		]
+	},
+	"vars": {
+		"ALLOWED_EMAILS": ""
 	}
 	/**
 	 * Smart Placement

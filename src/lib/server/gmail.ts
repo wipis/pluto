@@ -49,14 +49,7 @@ export const sendEmail = createServerFn({ method: "POST" })
     const env = getEnv();
     const db = getDb(env.DB);
 
-    // Get valid access token (refreshes if needed)
-    const accessToken = await getValidAccessToken();
-
-    // Get sender's email
-    const profile = await getGmailProfile(accessToken);
-    const fromEmail = profile.emailAddress;
-
-    // Get campaign contact with email content
+    // Get campaign contact with email content (including campaign for gmailAccountId)
     const cc = await db.query.campaignContacts.findFirst({
       where: eq(campaignContacts.id, data.campaignContactId),
       with: { contact: true, campaign: true },
@@ -69,6 +62,13 @@ export const sendEmail = createServerFn({ method: "POST" })
     if (cc.stage !== "approved") {
       throw new Error("Email must be approved before sending");
     }
+
+    // Get valid access token for the campaign's Gmail account (or default)
+    const accessToken = await getValidAccessToken(cc.campaign.gmailAccountId || undefined);
+
+    // Get sender's email
+    const profile = await getGmailProfile(accessToken);
+    const fromEmail = profile.emailAddress;
 
     const subject = cc.finalSubject || cc.draftSubject;
     const body = cc.finalBody || cc.draftBody;

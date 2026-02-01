@@ -114,7 +114,7 @@ export default function Header({ user }: HeaderProps) {
                 <DropdownMenuLabel>{user.email}</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
-                  <Link to="/settings" className="cursor-pointer">
+                  <Link to="/settings" search={{}} className="cursor-pointer">
                     <Settings className="mr-2 h-4 w-4" />
                     Settings
                   </Link>

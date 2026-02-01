@@ -8,120 +8,98 @@ Pluto is a lightweight outreach CRM for managing cold email campaigns with AI-po
 
 **Core flow:** Import CSV → Enrich (Exa) → Draft (Claude) → Review/Edit → Send (Gmail) → Track Replies
 
-**Products supported:**
-- `file-logic` - HIPAA document processing for SS disability law firms
-- `consulting` - Design engineering services for startups/agencies
-- `offerarc` - AI ad generation for media buyers
-
 ## Development Commands
 
 ```bash
-pnpm dev          # Start dev server on port 3000
-pnpm build        # Build for production
-pnpm test         # Run Vitest tests
-pnpm deploy       # Build and deploy to Cloudflare Pages
-pnpm cf-typegen   # Generate Cloudflare runtime types
-pnpm db:generate  # Generate Drizzle migrations
-pnpm db:migrate   # Run D1 migrations
+pnpm dev              # Start dev server on port 3000
+pnpm build            # Build for production
+pnpm test             # Run all Vitest tests
+pnpm deploy           # Build and deploy to Cloudflare Pages
+pnpm cf-typegen       # Generate Cloudflare runtime types
+pnpm db:generate      # Generate Drizzle migrations
+pnpm db:migrate       # Run D1 migrations locally
+pnpm db:migrate:prod  # Run D1 migrations on production
 ```
 
-## Tech Stack
+## Architecture
 
-| Layer | Technology |
-|-------|------------|
-| Framework | TanStack Start (file-based routing, SSR) |
-| Database | Cloudflare D1 (SQLite) via Drizzle ORM |
-| Auth | Cloudflare Access (zero config in app) |
-| AI | Anthropic Claude API |
-| Research | Exa API |
-| Email | Gmail API (OAuth2) |
-| Styling | Tailwind CSS v4 + shadcn/ui |
+### Framework: TanStack Start + Cloudflare Workers
 
-## Source Structure
+Routes are file-based in `src/routes/`. Server functions use `createServerFn` from `@tanstack/react-start`:
 
-```
-src/
-├── routes/              # File-based routing (TanStack Router)
-│   ├── __root.tsx       # Root layout with Header
-│   ├── index.tsx        # Dashboard with stats
-│   ├── review.tsx       # Draft review queue (split panel UI)
-│   ├── contacts/
-│   │   ├── index.tsx    # Contact list
-│   │   ├── $id.tsx      # Contact detail
-│   │   ├── new.tsx      # Add contact form
-│   │   └── import.tsx   # CSV import with column mapping
-│   ├── companies/
-│   │   ├── index.tsx    # Company cards
-│   │   └── $id.tsx      # Company detail with enrichment
-│   └── campaigns/
-│       ├── index.tsx    # Campaign cards with counts
-│       ├── new.tsx      # Create campaign form
-│       └── $id.tsx      # Campaign detail with pipeline view
-├── components/
-│   ├── Header.tsx       # Navigation header
-│   └── ui/              # shadcn/ui components
-├── lib/
-│   ├── server/          # Server functions (createServerFn)
-│   │   ├── contacts.ts  # Contact CRUD
-│   │   ├── companies.ts # Company CRUD
-│   │   ├── campaigns.ts # Campaign CRUD + add contacts
-│   │   ├── import.ts    # CSV import
-│   │   ├── enrichment.ts # Exa API integration
-│   │   ├── drafting.ts  # Claude API integration
-│   │   ├── gmail.ts     # Gmail send/reply check
-│   │   ├── review.ts    # Review queue operations
-│   │   └── stats.ts     # Dashboard stats
-│   ├── db/
-│   │   ├── schema.ts    # Drizzle schema (6 tables)
-│   │   └── index.ts     # getDb helper
-│   ├── products.ts      # Product configs
-│   └── utils.ts         # cn() classname utility
-└── router.tsx
+```typescript
+import { createServerFn } from "@tanstack/react-start";
+import { getEnv } from "@/lib/env";
+import { getDb } from "@/lib/db";
+
+export const getData = createServerFn({ method: "GET" })
+  .inputValidator((data: { id: string }) => data)
+  .handler(async ({ data }) => {
+    const env = getEnv();  // Access Cloudflare bindings
+    const db = getDb(env.DB);
+    // ...
+  });
 ```
 
-## Database Schema
+### Background Jobs: Cloudflare Queues
 
-**Core tables:** `companies`, `contacts`, `campaigns`, `campaign_contacts`, `emails`, `activities`
+The worker (`src/worker.ts`) handles both HTTP requests (via TanStack Start) and queue processing. Job types defined in `src/lib/queue/types.ts`:
+- `enrich` - Exa API company research
+- `draft` - Claude email generation
+- `send` - Gmail delivery
+- `check_replies` - Poll for responses
 
-**Campaign contact stages:** `new` → `enriching` → `enriched` → `drafting` → `drafted` → `approved` → `sending` → `sent` → `replied` | `bounced` | `skipped`
+Processors in `src/lib/queue/processors.ts` implement state machine transitions for `campaign_contacts.stage`.
 
-**Activity types:** `contact_created`, `contact_updated`, `added_to_campaign`, `enrichment_started`, `enrichment_completed`, `draft_created`, `draft_approved`, `draft_rejected`, `email_sent`, `email_opened`, `email_replied`, `note_added`
+### Database: D1 + Drizzle ORM
+
+Schema in `src/lib/db/schema.ts`. Access via `getDb(env.DB)`.
+
+**Core tables:** `products`, `companies`, `contacts`, `campaigns`, `campaign_contacts`, `emails`, `activities`, `gmail_tokens`
+
+**Campaign contact stages (state machine):**
+```
+new → queued_enrich → enriching → enriched → queued_draft → drafting → drafted → approved → queued_send → sending → sent → replied | bounced | skipped
+```
+
+### Products (Dynamic Configuration)
+
+Products are stored in the database with fields for prompt engineering:
+- `enrichmentQueryTemplate` - Exa search template with `{{companyName}}` placeholder
+- `emailSystemPrompt` - Claude system prompt for email drafting
+- `fewShotExamples`, `antiPatterns`, `painPoints` - Advanced prompt tuning (JSON)
 
 ## Key Patterns
 
-**Server Functions**: Use `createServerFn` from `@tanstack/react-start`:
-```typescript
-const getContacts = createServerFn({ method: 'GET' }).handler(async () => {
-  // Access D1 via env bindings
-})
-```
+**Path aliases:** Use `@/*` to import from `src/*`
 
-**Product Context**: Each product in `src/lib/products.ts` defines:
-- `name`, `description`, `valueProps`, `targetAudience`
-- `enrichmentQuery(companyName)` - Exa search query generator
+**Environment access:** Always use `getEnv()` from `@/lib/env` to access Cloudflare bindings
 
-**Path Aliases**: Use `@/*` to import from `src/*`
+**JSON fields:** Several columns store JSON as text (`enrichmentData`, `tags`, `metadata`). Parse with `JSON.parse()`, stringify before storing.
 
-## Environment Variables
-
-```
-ANTHROPIC_API_KEY=sk-ant-...
-EXA_API_KEY=...
-GMAIL_CLIENT_ID=...
-GMAIL_CLIENT_SECRET=...
-GMAIL_REFRESH_TOKEN=...
-GMAIL_FROM_EMAIL=you@example.com
-```
-
-D1 database binding: `DB` (configured in wrangler.jsonc)
+**Activity logging:** Most mutations should log to `activities` table for audit trail
 
 ## External Integrations
 
-**Exa**: Company enrichment via `searchAndContents` with neural search. Product-specific queries for targeted research.
+| Service | Purpose | Key Location |
+|---------|---------|--------------|
+| Exa API | Company enrichment | `src/lib/server/enrichment.ts` |
+| Claude API | Email drafting, hook extraction | `src/lib/server/drafting.ts` |
+| Gmail API | OAuth, send, reply tracking | `src/lib/server/gmail*.ts` |
 
-**Claude**: Email drafting with system prompt for concise, personalized cold emails (<150 words). Supports regeneration with feedback.
+## Environment Variables
 
-**Gmail**: Send via `users.messages.send`, track replies by checking thread message count.
+Required secrets (set via `wrangler secret`):
+- `ANTHROPIC_API_KEY` - Claude API
+- `EXA_API_KEY` - Exa research API
+- `GMAIL_CLIENT_ID`, `GMAIL_CLIENT_SECRET` - OAuth credentials
+- `BETTER_AUTH_SECRET` - Session encryption key
+
+Configuration (set in `wrangler.jsonc` vars or `.dev.vars`):
+- `ALLOWED_EMAILS` - Comma-separated list of emails permitted to sign up (empty = allow all)
+
+D1 binding: `DB` (configured in `wrangler.jsonc`)
+Queue binding: `JOBS_QUEUE`
 
 ## Icons
 

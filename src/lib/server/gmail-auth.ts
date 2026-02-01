@@ -1,4 +1,5 @@
-import { eq } from "drizzle-orm";
+import { createServerFn } from "@tanstack/react-start";
+import { eq, desc } from "drizzle-orm";
 import { getDb, gmailTokens } from "@/lib/db";
 import { getEnv } from "@/lib/env";
 
@@ -114,11 +115,18 @@ export async function getUserEmail(accessToken: string): Promise<string> {
   return data.email;
 }
 
-export async function getValidAccessToken(): Promise<string> {
+export async function getValidAccessToken(accountId?: string): Promise<string> {
   const env = getEnv();
   const db = getDb(env.DB);
 
-  const tokens = await db.query.gmailTokens.findFirst();
+  // Get specific account or first available
+  const tokens = accountId
+    ? await db.query.gmailTokens.findFirst({
+        where: eq(gmailTokens.id, accountId),
+      })
+    : await db.query.gmailTokens.findFirst({
+        orderBy: [desc(gmailTokens.createdAt)],
+      });
 
   if (!tokens) {
     throw new Error("Gmail not connected. Please connect Gmail in Settings.");
@@ -151,40 +159,73 @@ export async function getValidAccessToken(): Promise<string> {
 export async function saveTokens(
   tokens: TokenResponse,
   userEmail: string
-): Promise<void> {
+): Promise<string> {
   const env = getEnv();
   const db = getDb(env.DB);
 
-  // Check if tokens already exist for this email
-  const existing = await db.query.gmailTokens.findFirst({
-    where: eq(gmailTokens.userEmail, userEmail),
-  });
+  if (!tokens.refresh_token) {
+    throw new Error("No refresh token received. Please try connecting again.");
+  }
 
-  if (existing) {
-    // Update existing tokens
-    await db
-      .update(gmailTokens)
-      .set({
-        accessToken: tokens.access_token,
-        refreshToken: tokens.refresh_token || existing.refreshToken,
-        expiresAt: new Date(Date.now() + tokens.expires_in * 1000),
-        scope: tokens.scope,
-        updatedAt: new Date(),
-      })
-      .where(eq(gmailTokens.id, existing.id));
-  } else {
-    // Insert new tokens
-    if (!tokens.refresh_token) {
-      throw new Error("No refresh token received. Please try connecting again.");
-    }
-
-    await db.insert(gmailTokens).values({
+  // Always insert a new account (supports multiple accounts)
+  const [newAccount] = await db
+    .insert(gmailTokens)
+    .values({
       userEmail,
       accessToken: tokens.access_token,
       refreshToken: tokens.refresh_token,
       tokenType: tokens.token_type,
       expiresAt: new Date(Date.now() + tokens.expires_in * 1000),
       scope: tokens.scope,
-    });
-  }
+    })
+    .returning();
+
+  return newAccount.id;
 }
+
+// Get all connected Gmail accounts
+export const getGmailAccounts = createServerFn({ method: "GET" }).handler(
+  async () => {
+    const env = getEnv();
+    const db = getDb(env.DB);
+
+    const accounts = await db.query.gmailTokens.findMany({
+      columns: {
+        id: true,
+        userEmail: true,
+        label: true,
+        createdAt: true,
+      },
+      orderBy: [desc(gmailTokens.createdAt)],
+    });
+
+    return accounts;
+  }
+);
+
+// Delete a Gmail account
+export const deleteGmailAccount = createServerFn({ method: "POST" })
+  .inputValidator((data: { accountId: string }) => data)
+  .handler(async ({ data }) => {
+    const env = getEnv();
+    const db = getDb(env.DB);
+
+    await db.delete(gmailTokens).where(eq(gmailTokens.id, data.accountId));
+
+    return { success: true };
+  });
+
+// Update account label
+export const updateAccountLabel = createServerFn({ method: "POST" })
+  .inputValidator((data: { accountId: string; label: string }) => data)
+  .handler(async ({ data }) => {
+    const env = getEnv();
+    const db = getDb(env.DB);
+
+    await db
+      .update(gmailTokens)
+      .set({ label: data.label, updatedAt: new Date() })
+      .where(eq(gmailTokens.id, data.accountId));
+
+    return { success: true };
+  });

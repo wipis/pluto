@@ -43,6 +43,13 @@
       "when": 1769904232153,
       "tag": "0005_dapper_famine",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1769904783918,
+      "tag": "0006_sour_aaron_stack",
+      "breakpoints": true
     }
   ]
 }
