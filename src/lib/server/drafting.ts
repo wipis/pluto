@@ -1,7 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
-import { eq, and, inArray } from "drizzle-orm";
+import { eq, and, inArray, sql } from "drizzle-orm";
 import { getDb, campaignContacts, campaigns, activities, products } from "@/lib/db";
 import { getEnv } from "@/lib/env";
+import type { Product } from "@/lib/db/schema";
 
 interface ClaudeMessage {
   role: "user" | "assistant";
@@ -67,19 +68,48 @@ interface ExtractedHook {
   proofPoint: string;
 }
 
+interface FewShotExample {
+  context: string;
+  hook: string;
+  subject: string;
+  body: string;
+}
+
+// Helper to parse JSON fields from product with fallbacks
+function parseProductFields(product: Product): {
+  valueProps: string[];
+  painPoints: string[];
+  antiPatterns: string[];
+  fewShotExamples: FewShotExample[];
+} {
+  let valueProps: string[] = [];
+  let painPoints: string[] = [];
+  let antiPatterns: string[] = [];
+  let fewShotExamples: FewShotExample[] = [];
+
+  try { valueProps = JSON.parse(product.valueProps); } catch { /* empty */ }
+  try { painPoints = product.painPoints ? JSON.parse(product.painPoints) : []; } catch { /* empty */ }
+  try { antiPatterns = product.antiPatterns ? JSON.parse(product.antiPatterns) : []; } catch { /* empty */ }
+  try { fewShotExamples = product.fewShotExamples ? JSON.parse(product.fewShotExamples) : []; } catch { /* empty */ }
+
+  return { valueProps, painPoints, antiPatterns, fewShotExamples };
+}
+
 export async function extractHook(
   enrichmentSummary: string,
   product: Product,
   contact: { name: string; title: string; companyName: string },
   apiKey: string
 ): Promise<ExtractedHook> {
+  const { painPoints } = parseProductFields(product);
+
   const hookPrompt = `Based on this research about ${contact.companyName}, identify the SINGLE most compelling angle for reaching out about ${product.name}.
 
 Research:
 ${enrichmentSummary}
 
 Product pain points we solve:
-${product.painPoints.join("\n")}
+${painPoints.join("\n")}
 
 Return a JSON object with exactly these fields:
 - hook: One specific observation about their company (not generic, reference actual research)
@@ -109,7 +139,7 @@ Return ONLY the JSON object, no other text.`;
     // Fallback if parsing fails
     return {
       hook: "Based on your company's work",
-      angle: product.painPoints[0] || "efficiency",
+      angle: painPoints[0] || "efficiency",
       proofPoint: "your recent activity",
     };
   }
@@ -122,12 +152,14 @@ export function buildStructuredPrompt(
   extractedHook: ExtractedHook,
   templatePrompt?: string | null
 ): string {
-  // Pick a random example to include (avoid showing same example every time)
-  const example = product.fewShotExamples[
-    Math.floor(Math.random() * product.fewShotExamples.length)
-  ];
+  const { valueProps, antiPatterns, fewShotExamples } = parseProductFields(product);
 
-  return `Write a cold email following this EXACT structure:
+  // Pick a random example to include (avoid showing same example every time)
+  const example = fewShotExamples.length > 0
+    ? fewShotExamples[Math.floor(Math.random() * fewShotExamples.length)]
+    : null;
+
+  let prompt = `Write a cold email following this EXACT structure:
 
 1. **HOOK** (1 sentence): Reference something specific about their company
 2. **BRIDGE** (1 sentence): Connect their situation to a common challenge
@@ -146,26 +178,32 @@ export function buildStructuredPrompt(
 
 **Product context:**
 - ${product.description}
-- Key value: ${product.valueProps[0]}
+- Key value: ${valueProps[0] || "efficient solution"}`;
 
-**DO NOT use these phrases:**
-${product.antiPatterns.slice(0, 8).map((p) => `- "${p}"`).join("\n")}
+  if (antiPatterns.length > 0) {
+    prompt += `\n\n**DO NOT use these phrases:**
+${antiPatterns.slice(0, 8).map((p) => `- "${p}"`).join("\n")}`;
+  }
 
-**Reference example (match this tone and structure):**
+  if (example) {
+    prompt += `\n\n**Reference example (match this tone and structure):**
 Context: ${example.context}
 Hook used: ${example.hook}
 
 SUBJECT: ${example.subject}
 BODY:
-${example.body}
+${example.body}`;
+  }
 
----
+  prompt += `\n\n---
 ${templatePrompt ? `**Additional context:** ${templatePrompt}\n\n---` : ""}
 
 Now write the email for ${contact.name}. Format your response as:
 SUBJECT: [subject line - max 50 chars, specific to their situation]
 BODY:
 [email body - under 150 words, following the 4-part structure]`;
+
+  return prompt;
 }
 
 // Draft emails for campaign contacts
@@ -193,13 +231,6 @@ export const draftCampaignEmails = createServerFn({ method: "POST" })
 
     if (!product) {
       throw new Error("Product not found for campaign");
-    }
-
-    let valueProps: string[] = [];
-    try {
-      valueProps = JSON.parse(product.valueProps);
-    } catch {
-      console.error(`Invalid valueProps JSON for product ${product.id}`);
     }
 
     // Get enriched contacts ready for drafting
@@ -247,31 +278,29 @@ export const draftCampaignEmails = createServerFn({ method: "POST" })
           .join(" ") || "there";
         const companyName = cc.contact.company?.name || "their company";
 
-        const userPrompt = `Write a cold email for the following:
+        const contactInfo = {
+          name: contactName,
+          title: cc.contact.title || "Unknown",
+          companyName,
+          email: cc.contact.email,
+        };
 
-**Recipient:**
-- Name: ${contactName}
-- Title: ${cc.contact.title || "Unknown"}
-- Company: ${companyName}
-- Email: ${cc.contact.email}
+        // Step 1: Extract the hook from enrichment data
+        const extractedHook = await extractHook(
+          enrichmentSummary,
+          product,
+          contactInfo,
+          env.ANTHROPIC_API_KEY
+        );
 
-**Research on their company:**
-${enrichmentSummary}
-
-**What I'm reaching out about:**
-- Product: ${product.name}
-- Description: ${product.description}
-- Key value props: ${valueProps.join(", ")}
-- Target audience: ${product.targetAudience}
-
-${campaign.templatePrompt ? `**Additional context:** ${campaign.templatePrompt}` : ""}
-
-Write the email with a subject line. Be specific about their company/situation based on the research. Make the connection between their needs and what I offer feel natural, not forced.
-
-Format your response as:
-SUBJECT: [subject line]
-BODY:
-[email body]`;
+        // Step 2: Build structured prompt with hook and examples
+        const userPrompt = buildStructuredPrompt(
+          product,
+          contactInfo,
+          enrichmentSummary,
+          extractedHook,
+          campaign.templatePrompt
+        );
 
         const response = await callClaude(
           product.emailSystemPrompt,
@@ -281,13 +310,14 @@ BODY:
 
         const { subject, body } = parseEmailResponse(response);
 
-        // Update with draft
+        // Update with draft and hook
         await db
           .update(campaignContacts)
           .set({
             stage: "drafted",
             draftSubject: subject,
             draftBody: body,
+            hookUsed: extractedHook.hook,
             updatedAt: new Date(),
           })
           .where(eq(campaignContacts.id, cc.id));
@@ -296,6 +326,10 @@ BODY:
           contactId: cc.contactId,
           campaignId: data.campaignId,
           type: "draft_created",
+          metadata: JSON.stringify({
+            hook: extractedHook.hook,
+            angle: extractedHook.angle,
+          }),
         });
 
         results.drafted++;

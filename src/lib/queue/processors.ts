@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
-import { getDb, campaignContacts, campaigns, activities, companies } from "@/lib/db";
-import { getProduct, type ProductId } from "@/lib/products";
+import { getDb, campaignContacts, activities, companies, products } from "@/lib/db";
+import { buildEnrichmentQuery } from "@/lib/server/products";
 import type { JobMessage, JobResult } from "./types";
 
 // Process a single enrichment job
@@ -35,14 +35,21 @@ export async function processEnrichment(
       .set({ stage: "enriching", updatedAt: new Date() })
       .where(eq(campaignContacts.id, cc.id));
 
-    const product = getProduct(cc.campaign.product as ProductId);
+    // Get product from DB
+    const product = await db.query.products.findFirst({
+      where: eq(products.id, cc.campaign.product),
+    });
+
+    if (!product) {
+      throw new Error("Product not found for campaign");
+    }
 
     // Build search query
     const companyName =
       cc.contact.company?.name ||
       cc.contact.email.split("@")[1]?.split(".")[0] ||
       "company";
-    const productQuery = product.enrichmentQuery(companyName);
+    const productQuery = buildEnrichmentQuery(product.enrichmentQueryTemplate, companyName);
 
     // Import and use enrichment logic
     const { enrichWithMultiQuery, scoreEnrichmentQuality } = await import(
@@ -58,7 +65,7 @@ export async function processEnrichment(
     // Score enrichment quality
     const qualityScore = scoreEnrichmentQuality(
       allResults,
-      cc.campaign.product as ProductId
+      cc.campaign.product
     );
 
     const hasRecentNews = newsResults.length > 0;
@@ -155,7 +162,14 @@ export async function processDrafting(
       .set({ stage: "drafting", updatedAt: new Date() })
       .where(eq(campaignContacts.id, cc.id));
 
-    const product = getProduct(cc.campaign.product as ProductId);
+    // Get product from DB
+    const product = await db.query.products.findFirst({
+      where: eq(products.id, cc.campaign.product),
+    });
+
+    if (!product) {
+      throw new Error("Product not found for campaign");
+    }
 
     // Parse enrichment data
     const enrichment = cc.enrichmentData ? JSON.parse(cc.enrichmentData) : null;

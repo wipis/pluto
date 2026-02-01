@@ -13,6 +13,10 @@ export const products = sqliteTable("products", {
   targetAudience: text("target_audience").notNull(),
   enrichmentQueryTemplate: text("enrichment_query_template").notNull(), // "{{companyName}} law firm..."
   emailSystemPrompt: text("email_system_prompt").notNull(),
+  // Advanced prompt engineering fields
+  fewShotExamples: text("few_shot_examples"), // JSON array of { context, hook, subject, body }
+  antiPatterns: text("anti_patterns"), // JSON array of phrases to avoid
+  painPoints: text("pain_points"), // JSON array of customer pain points
   isDefault: integer("is_default", { mode: "boolean" }).default(false),
   createdAt: integer("created_at", { mode: "timestamp" })
     .notNull()

@@ -36,6 +36,13 @@
       "when": 1769903571216,
       "tag": "0004_products",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1769904232153,
+      "tag": "0005_dapper_famine",
+      "breakpoints": true
     }
   ]
 }
