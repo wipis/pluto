@@ -10,6 +10,7 @@ export function getAuth() {
   const db = getDb(env.DB);
 
   return betterAuth({
+    secret: env.BETTER_AUTH_SECRET,
     database: drizzleAdapter(db, {
       provider: "sqlite",
       schema: {
@@ -22,6 +23,14 @@ export function getAuth() {
     emailAndPassword: {
       enabled: true,
       minPasswordLength: 8,
+      signUp: {
+        async beforeCreate({ email }) {
+          const allowedEmails = ["angela@filelogic.ai", "bridger@filelogic.ai"];
+          if (!allowedEmails.includes(email.toLowerCase())) {
+            throw new Error("Signups are restricted to invited users only");
+          }
+        },
+      },
     },
     session: {
       expiresIn: 60 * 60 * 24 * 7, // 7 days

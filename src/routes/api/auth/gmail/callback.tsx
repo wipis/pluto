@@ -25,11 +25,11 @@ const handleGmailCallback = createServerFn({ method: "GET" })
 
     // Handle OAuth errors
     if (error) {
-      return { redirect: `${origin}/settings?error=${encodeURIComponent(error)}` };
+      return { redirect: `/settings?error=${encodeURIComponent(error)}` };
     }
 
     if (!code) {
-      return { redirect: `${origin}/settings?error=${encodeURIComponent("No authorization code received")}` };
+      return { redirect: `/settings?error=${encodeURIComponent("No authorization code received")}` };
     }
 
     try {
@@ -46,12 +46,12 @@ const handleGmailCallback = createServerFn({ method: "GET" })
       await saveTokens(tokens, userEmail);
 
       // Redirect to settings with success
-      return { redirect: `${origin}/settings?success=gmail_connected` };
+      return { redirect: `/settings?success=gmail_connected` };
     } catch (err) {
       console.error("OAuth callback error:", err);
       const errorMessage =
         err instanceof Error ? err.message : "OAuth callback failed";
-      return { redirect: `${origin}/settings?error=${encodeURIComponent(errorMessage)}` };
+      return { redirect: `/settings?error=${encodeURIComponent(errorMessage)}` };
     }
   });
 
