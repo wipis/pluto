@@ -1,8 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
-import { eq, and, inArray, sql } from "drizzle-orm";
-import { getDb, campaignContacts, campaigns, activities } from "@/lib/db";
+import { eq, and, inArray } from "drizzle-orm";
+import { getDb, campaignContacts, campaigns, activities, products } from "@/lib/db";
 import { getEnv } from "@/lib/env";
-import { getProduct, type Product } from "@/lib/products";
 
 interface ClaudeMessage {
   role: "user" | "assistant";
@@ -188,7 +187,20 @@ export const draftCampaignEmails = createServerFn({ method: "POST" })
       throw new Error("Campaign not found");
     }
 
-    const product = getProduct(campaign.product as any);
+    const product = await db.query.products.findFirst({
+      where: eq(products.id, campaign.product),
+    });
+
+    if (!product) {
+      throw new Error("Product not found for campaign");
+    }
+
+    let valueProps: string[] = [];
+    try {
+      valueProps = JSON.parse(product.valueProps);
+    } catch {
+      console.error(`Invalid valueProps JSON for product ${product.id}`);
+    }
 
     // Get enriched contacts ready for drafting
     const toDraft = await db.query.campaignContacts.findMany({
@@ -235,29 +247,31 @@ export const draftCampaignEmails = createServerFn({ method: "POST" })
           .join(" ") || "there";
         const companyName = cc.contact.company?.name || "their company";
 
-        const contactInfo = {
-          name: contactName,
-          title: cc.contact.title || "Unknown",
-          companyName,
-          email: cc.contact.email,
-        };
+        const userPrompt = `Write a cold email for the following:
 
-        // Step 1: Extract the hook
-        const extractedHook = await extractHook(
-          enrichmentSummary,
-          product,
-          contactInfo,
-          env.ANTHROPIC_API_KEY
-        );
+**Recipient:**
+- Name: ${contactName}
+- Title: ${cc.contact.title || "Unknown"}
+- Company: ${companyName}
+- Email: ${cc.contact.email}
 
-        // Step 2: Build structured prompt with hook and examples
-        const userPrompt = buildStructuredPrompt(
-          product,
-          contactInfo,
-          enrichmentSummary,
-          extractedHook,
-          campaign.templatePrompt
-        );
+**Research on their company:**
+${enrichmentSummary}
+
+**What I'm reaching out about:**
+- Product: ${product.name}
+- Description: ${product.description}
+- Key value props: ${valueProps.join(", ")}
+- Target audience: ${product.targetAudience}
+
+${campaign.templatePrompt ? `**Additional context:** ${campaign.templatePrompt}` : ""}
+
+Write the email with a subject line. Be specific about their company/situation based on the research. Make the connection between their needs and what I offer feel natural, not forced.
+
+Format your response as:
+SUBJECT: [subject line]
+BODY:
+[email body]`;
 
         const response = await callClaude(
           product.emailSystemPrompt,
@@ -267,14 +281,13 @@ export const draftCampaignEmails = createServerFn({ method: "POST" })
 
         const { subject, body } = parseEmailResponse(response);
 
-        // Update with draft and hook
+        // Update with draft
         await db
           .update(campaignContacts)
           .set({
             stage: "drafted",
             draftSubject: subject,
             draftBody: body,
-            hookUsed: extractedHook.hook,
             updatedAt: new Date(),
           })
           .where(eq(campaignContacts.id, cc.id));
@@ -283,10 +296,6 @@ export const draftCampaignEmails = createServerFn({ method: "POST" })
           contactId: cc.contactId,
           campaignId: data.campaignId,
           type: "draft_created",
-          metadata: JSON.stringify({
-            hook: extractedHook.hook,
-            angle: extractedHook.angle,
-          }),
         });
 
         results.drafted++;
@@ -329,7 +338,20 @@ export const regenerateDraft = createServerFn({ method: "POST" })
       throw new Error("Campaign contact not found");
     }
 
-    const product = getProduct(cc.campaign.product as any);
+    const product = await db.query.products.findFirst({
+      where: eq(products.id, cc.campaign.product),
+    });
+
+    if (!product) {
+      throw new Error("Product not found for campaign");
+    }
+
+    let productValueProps: string[] = [];
+    try {
+      productValueProps = JSON.parse(product.valueProps);
+    } catch {
+      console.error(`Invalid valueProps JSON for product ${product.id}`);
+    }
     const enrichment = cc.enrichmentData ? JSON.parse(cc.enrichmentData) : null;
 
     const enrichmentSummary = enrichment?.results
@@ -377,7 +399,7 @@ ${enrichmentSummary}
 
 **Product:** ${product.name}
 - ${product.description}
-- Value props: ${product.valueProps.join(", ")}
+- Value props: ${productValueProps.join(", ")}
 
 ${cc.campaign.templatePrompt ? `**Additional context:** ${cc.campaign.templatePrompt}` : ""}
 

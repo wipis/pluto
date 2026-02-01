@@ -1,8 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import { eq, and, inArray } from "drizzle-orm";
-import { getDb, campaignContacts, companies, campaigns, activities } from "@/lib/db";
+import { getDb, campaignContacts, companies, campaigns, activities, products } from "@/lib/db";
 import { getEnv } from "@/lib/env";
-import { getProduct, type ProductId } from "@/lib/products";
+import { buildEnrichmentQuery } from "./products";
 
 interface ExaResult {
   title: string;
@@ -130,8 +130,8 @@ export async function enrichWithMultiQuery(
   return { companyResults, newsResults, allResults };
 }
 
-// Pain-point keywords for quality scoring
-const painPointKeywords: Record<ProductId, {
+// Pain-point keywords for quality scoring (for default products)
+const painPointKeywords: Record<string, {
   highValue: string[];
   signals: { growth: string[]; pain: string[] };
 }> = {
@@ -160,7 +160,7 @@ const painPointKeywords: Record<ProductId, {
 
 export function scoreEnrichmentQuality(
   results: ExaResult[],
-  productId: ProductId
+  productId: string
 ): { score: number; reasons: string[] } {
   const keywords = painPointKeywords[productId];
   if (!keywords) {
@@ -236,8 +236,15 @@ export const enrichCompany = createServerFn({ method: "POST" })
     // Build query based on product or generic
     let query: string;
     if (data.productId) {
-      const product = getProduct(data.productId as any);
-      query = product.enrichmentQuery(company.name);
+      const product = await db.query.products.findFirst({
+        where: eq(products.id, data.productId),
+      });
+      if (product) {
+        query = buildEnrichmentQuery(product.enrichmentQueryTemplate, company.name);
+      } else {
+        console.warn(`Product ${data.productId} not found, using generic enrichment query`);
+        query = `${company.name} ${company.domain || ""} company overview`;
+      }
     } else {
       query = `${company.name} ${company.domain || ""} company overview`;
     }
@@ -283,7 +290,13 @@ export const enrichCampaignContacts = createServerFn({ method: "POST" })
       throw new Error("Campaign not found");
     }
 
-    const product = getProduct(campaign.product as any);
+    const product = await db.query.products.findFirst({
+      where: eq(products.id, campaign.product),
+    });
+
+    if (!product) {
+      throw new Error("Product not found for campaign");
+    }
 
     // Get contacts to enrich
     const toEnrich = await db.query.campaignContacts.findMany({
@@ -314,7 +327,7 @@ export const enrichCampaignContacts = createServerFn({ method: "POST" })
         // Build search query
         const companyName =
           cc.contact.company?.name || cc.contact.email.split("@")[1]?.split(".")[0] || "company";
-        const productQuery = product.enrichmentQuery(companyName);
+        const productQuery = buildEnrichmentQuery(product.enrichmentQueryTemplate, companyName);
 
         // Call Exa with multi-query approach
         const { companyResults, newsResults, allResults } = await enrichWithMultiQuery(
@@ -326,7 +339,7 @@ export const enrichCampaignContacts = createServerFn({ method: "POST" })
         // Score enrichment quality
         const qualityScore = scoreEnrichmentQuality(
           allResults,
-          campaign.product as ProductId
+          campaign.product
         );
 
         // Boost score if we found recent news

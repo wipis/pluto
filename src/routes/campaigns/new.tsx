@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { createCampaign } from "@/lib/server/campaigns";
-import { getProductList, type ProductId } from "@/lib/products";
+import { getProducts } from "@/lib/server/products";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,23 +16,31 @@ import {
 } from "@/components/ui/select";
 import { ArrowLeft, Save } from "lucide-react";
 
-const products = getProductList();
-
 export const Route = createFileRoute("/campaigns/new")({
   component: NewCampaign,
+  loader: () => getProducts(),
 });
 
 function NewCampaign() {
   const navigate = useNavigate();
+  const products = Route.useLoaderData();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
-    product: "" as ProductId | "",
+    product: "",
     description: "",
     templatePrompt: "",
   });
 
   const selectedProduct = products.find((p) => p.id === formData.product);
+  let selectedValueProps: string[] = [];
+  if (selectedProduct) {
+    try {
+      selectedValueProps = JSON.parse(selectedProduct.valueProps);
+    } catch {
+      // Invalid JSON, use empty array
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,7 +52,7 @@ function NewCampaign() {
       const campaign = await createCampaign({
         data: {
           name: formData.name,
-          product: formData.product as ProductId,
+          product: formData.product,
           description: formData.description || undefined,
           templatePrompt: formData.templatePrompt || undefined,
         },
@@ -96,7 +104,7 @@ function NewCampaign() {
                 <Select
                   value={formData.product}
                   onValueChange={(value) =>
-                    setFormData({ ...formData, product: value as ProductId })
+                    setFormData({ ...formData, product: value })
                   }
                 >
                   <SelectTrigger>
@@ -176,7 +184,7 @@ function NewCampaign() {
                   Value Propositions
                 </p>
                 <ul className="list-disc list-inside space-y-1">
-                  {selectedProduct.valueProps.map((prop, i) => (
+                  {selectedValueProps.map((prop, i) => (
                     <li key={i} className="text-sm">
                       {prop}
                     </li>
