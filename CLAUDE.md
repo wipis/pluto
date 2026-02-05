@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Pluto is a lightweight outreach CRM for managing cold email campaigns with AI-powered research and drafting. Single-user app with Better Auth (email allowlist via `ALLOWED_EMAILS`).
+Pluto is a lightweight outreach CRM for managing cold email campaigns with AI-powered research and drafting. Multi-user app with invite-only signup (first user becomes admin).
 
 **Core flow:** Import CSV → Enrich (Exa) → Draft (Claude) → Review/Edit → Send (Gmail) → Track Replies
 
@@ -62,7 +62,7 @@ export const getData = createServerFn({ method: "GET" })
 
 Schema in `src/lib/db/schema.ts`. Access via `getDb(env.DB)`.
 
-**Core tables:** `products`, `companies`, `contacts`, `campaigns`, `campaign_contacts`, `emails`, `activities`, `gmail_tokens`
+**Core tables:** `products`, `companies`, `contacts`, `campaigns`, `campaign_contacts`, `emails`, `activities`, `gmail_tokens`, `invites`
 
 **ID generation:** All tables use `nanoid()` for primary keys.
 
@@ -96,9 +96,11 @@ Job types in `src/lib/queue/types.ts`, processors in `src/lib/queue/processors.t
 
 `src/lib/server/gmail-auth.ts` supports multiple Gmail accounts. Campaigns select which account to send from via `campaign.gmailAccountId`. Token refresh is transparent with a 5-minute expiry buffer.
 
-### Authentication
+### Authentication & Invites
 
-Better Auth with Drizzle adapter (`src/lib/auth/index.ts`). Route protection in `__root.tsx` via `beforeLoad` — redirects to `/login` if no session. Auth API handled by catch-all route at `src/routes/api/auth/$.ts`.
+Better Auth with Drizzle adapter (`src/lib/auth/index.ts`). First user to sign up becomes admin (`role: "admin"`). Subsequent signups require an invite — admin creates invites from Settings, generating a `/signup?token=xxx` link. Users table has a `role` field (`"admin"` | `"member"`). Invite server functions in `src/lib/server/invites.ts`.
+
+Route protection in `__root.tsx` via `beforeLoad` — redirects to `/login` if no session. Auth API handled by catch-all route at `src/routes/api/auth/$.ts`.
 
 ## Key Patterns
 
@@ -130,8 +132,5 @@ Required secrets (set via `wrangler secret`):
 - `ANTHROPIC_API_KEY`, `EXA_API_KEY`
 - `GMAIL_CLIENT_ID`, `GMAIL_CLIENT_SECRET`
 - `BETTER_AUTH_SECRET`
-
-Configuration (in `wrangler.jsonc` vars or `.dev.vars`):
-- `ALLOWED_EMAILS` — comma-separated emails permitted to sign up (empty = allow all)
 
 Bindings: `DB` (D1 database), `JOBS_QUEUE` (Cloudflare Queue)

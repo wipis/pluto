@@ -6,6 +6,14 @@ import {
   deleteGmailAccount,
   updateAccountLabel,
 } from "@/lib/server/gmail-auth";
+import {
+  createInvite,
+  listInvites,
+  revokeInvite,
+  listUsers,
+  removeUser,
+} from "@/lib/server/invites";
+import { getSession } from "@/lib/server/auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -19,11 +27,24 @@ import {
   AlertCircle,
   CheckCircle,
   X,
+  Users,
+  Copy,
+  Link as LinkIcon,
 } from "lucide-react";
 
 export const Route = createFileRoute("/settings")({
   component: Settings,
-  loader: () => getGmailAccounts(),
+  loader: async () => {
+    const [gmailAccounts, session] = await Promise.all([
+      getGmailAccounts(),
+      getSession(),
+    ]);
+    const isAdmin = session?.user?.role === "admin";
+    const [invitesList, usersList] = isAdmin
+      ? await Promise.all([listInvites(), listUsers()])
+      : [[], []];
+    return { gmailAccounts, isAdmin, invites: invitesList, users: usersList };
+  },
   validateSearch: (search: Record<string, unknown>) => ({
     success: search.success as string | undefined,
     error: search.error as string | undefined,
@@ -31,7 +52,8 @@ export const Route = createFileRoute("/settings")({
 });
 
 function Settings() {
-  const accounts = Route.useLoaderData();
+  const { gmailAccounts: accounts, isAdmin, invites, users } =
+    Route.useLoaderData();
   const navigate = useNavigate();
   const { success, error } = Route.useSearch();
   const [isConnecting, setIsConnecting] = useState(false);
@@ -43,6 +65,12 @@ function Settings() {
     message: string;
   } | null>(null);
 
+  // Invite state
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteLink, setInviteLink] = useState<string | null>(null);
+  const [isInviting, setIsInviting] = useState(false);
+  const [removingId, setRemovingId] = useState<string | null>(null);
+
   // Handle OAuth callback notifications
   useEffect(() => {
     if (success === "gmail_connected") {
@@ -50,7 +78,6 @@ function Settings() {
         type: "success",
         message: "Gmail account connected successfully!",
       });
-      // Clear the query params and refresh
       navigate({ to: "/settings", search: {}, replace: true });
     } else if (error) {
       setNotification({ type: "error", message: decodeURIComponent(error) });
@@ -120,6 +147,62 @@ function Settings() {
     setEditLabel("");
   };
 
+  const handleCreateInvite = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!inviteEmail.trim()) return;
+    setIsInviting(true);
+    setInviteLink(null);
+    try {
+      const result = await createInvite({ data: { email: inviteEmail } });
+      const link = `${window.location.origin}/signup?token=${result.token}`;
+      setInviteLink(link);
+      setInviteEmail("");
+      setNotification({ type: "success", message: "Invite created" });
+    } catch (err: any) {
+      setNotification({
+        type: "error",
+        message: err.message || "Failed to create invite",
+      });
+    } finally {
+      setIsInviting(false);
+    }
+  };
+
+  const handleCopyLink = () => {
+    if (inviteLink) {
+      navigator.clipboard.writeText(inviteLink);
+      setNotification({ type: "success", message: "Link copied to clipboard" });
+    }
+  };
+
+  const handleRevokeInvite = async (id: string) => {
+    try {
+      await revokeInvite({ data: { id } });
+      setNotification({ type: "success", message: "Invite revoked" });
+      navigate({ to: "/settings", search: {} });
+    } catch (err) {
+      setNotification({ type: "error", message: "Failed to revoke invite" });
+    }
+  };
+
+  const handleRemoveUser = async (id: string) => {
+    setRemovingId(id);
+    try {
+      await removeUser({ data: { id } });
+      setNotification({ type: "success", message: "User removed" });
+      navigate({ to: "/settings", search: {} });
+    } catch (err: any) {
+      setNotification({
+        type: "error",
+        message: err.message || "Failed to remove user",
+      });
+    } finally {
+      setRemovingId(null);
+    }
+  };
+
+  const pendingInvites = invites.filter((i) => i.status === "pending" && new Date() < i.expiresAt);
+
   return (
     <div className="p-6 space-y-6">
       <div>
@@ -142,6 +225,129 @@ function Settings() {
           )}
           <span className="text-sm">{notification.message}</span>
         </div>
+      )}
+
+      {/* Team Management - Admin Only */}
+      {isAdmin && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-3">
+              <Users className="h-5 w-5" />
+              <CardTitle>Team</CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Invite Form */}
+            <div className="space-y-3">
+              <h3 className="text-sm font-medium">Invite a team member</h3>
+              <form onSubmit={handleCreateInvite} className="flex gap-2">
+                <Input
+                  type="email"
+                  value={inviteEmail}
+                  onChange={(e) => setInviteEmail(e.target.value)}
+                  placeholder="coworker@example.com"
+                  required
+                  className="flex-1"
+                />
+                <Button type="submit" disabled={isInviting}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  {isInviting ? "Inviting..." : "Invite"}
+                </Button>
+              </form>
+
+              {inviteLink && (
+                <div className="flex items-center gap-2 p-3 bg-muted rounded-md">
+                  <LinkIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  <code className="text-xs flex-1 truncate">{inviteLink}</code>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleCopyLink}
+                  >
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
+            </div>
+
+            {/* Pending Invites */}
+            {pendingInvites.length > 0 && (
+              <div className="space-y-3">
+                <h3 className="text-sm font-medium">Pending invites</h3>
+                <div className="space-y-2">
+                  {pendingInvites.map((invite) => (
+                    <div
+                      key={invite.id}
+                      className="flex items-center justify-between p-3 border rounded-lg"
+                    >
+                      <div>
+                        <span className="text-sm font-medium">
+                          {invite.email}
+                        </span>
+                        <span className="text-xs text-muted-foreground ml-2">
+                          expires{" "}
+                          {new Date(invite.expiresAt).toLocaleDateString()}
+                        </span>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleRevokeInvite(invite.id)}
+                        className="text-destructive hover:text-destructive"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Members */}
+            {users.length > 0 && (
+              <div className="space-y-3">
+                <h3 className="text-sm font-medium">Members</h3>
+                <div className="space-y-2">
+                  {users.map((user) => (
+                    <div
+                      key={user.id}
+                      className="flex items-center justify-between p-3 border rounded-lg"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div>
+                          <span className="text-sm font-medium">
+                            {user.name}
+                          </span>
+                          <span className="text-xs text-muted-foreground ml-2">
+                            {user.email}
+                          </span>
+                        </div>
+                        <Badge
+                          variant={
+                            user.role === "admin" ? "default" : "secondary"
+                          }
+                        >
+                          {user.role}
+                        </Badge>
+                      </div>
+                      {user.role !== "admin" && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleRemoveUser(user.id)}
+                          disabled={removingId === user.id}
+                          className="text-destructive hover:text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       )}
 
       <Card>

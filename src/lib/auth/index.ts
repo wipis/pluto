@@ -1,6 +1,7 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { tanstackStartCookies } from "better-auth/tanstack-start";
+import { eq, sql, and } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { getEnv } from "@/lib/env";
 import * as schema from "@/lib/db/schema";
@@ -20,20 +21,75 @@ export function getAuth() {
         verification: schema.verifications,
       },
     }),
+    user: {
+      additionalFields: {
+        role: {
+          type: "string",
+          defaultValue: "member",
+          input: false,
+        },
+      },
+    },
     emailAndPassword: {
       enabled: true,
       minPasswordLength: 8,
       signUp: {
         async beforeCreate({ email }) {
-          // ALLOWED_EMAILS is a comma-separated list of emails
-          const allowedEmailsRaw = env.ALLOWED_EMAILS || "";
-          const allowedEmails = allowedEmailsRaw
-            .split(",")
-            .map((e) => e.trim().toLowerCase())
-            .filter(Boolean);
+          // Check if this is the first user (they become admin automatically)
+          const result = await db
+            .select({ count: sql<number>`count(*)` })
+            .from(schema.users);
+          const isFirstUser = result[0].count === 0;
 
-          if (allowedEmails.length > 0 && !allowedEmails.includes(email.toLowerCase())) {
-            throw new Error("Signups are restricted to invited users only");
+          if (isFirstUser) {
+            // First user is allowed — they'll be set as admin in afterCreate
+            return;
+          }
+
+          // Otherwise, require a valid invite for this email
+          const invite = await db
+            .select()
+            .from(schema.invites)
+            .where(
+              and(
+                eq(schema.invites.email, email.toLowerCase()),
+                eq(schema.invites.status, "pending")
+              )
+            )
+            .get();
+
+          if (!invite || new Date() > invite.expiresAt) {
+            throw new Error(
+              "Signups are invite-only. Ask your admin for an invite link."
+            );
+          }
+        },
+        async afterCreate({ user }) {
+          // Check if this is the first user — make them admin
+          const result = await db
+            .select({ count: sql<number>`count(*)` })
+            .from(schema.users);
+          const isFirstUser = result[0].count === 1;
+
+          if (isFirstUser) {
+            await db
+              .update(schema.users)
+              .set({ role: "admin" })
+              .where(eq(schema.users.id, user.id));
+          } else {
+            // Mark the invite as accepted
+            await db
+              .update(schema.invites)
+              .set({
+                status: "accepted",
+                acceptedAt: new Date(),
+              })
+              .where(
+                and(
+                  eq(schema.invites.email, user.email.toLowerCase()),
+                  eq(schema.invites.status, "pending")
+                )
+              );
           }
         },
       },

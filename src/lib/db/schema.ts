@@ -289,6 +289,7 @@ export const users = sqliteTable("users", {
   email: text("email").notNull().unique(),
   emailVerified: integer("email_verified", { mode: "boolean" }).default(false),
   image: text("image"),
+  role: text("role").notNull().default("member"), // "admin" | "member"
   createdAt: integer("created_at", { mode: "timestamp" })
     .notNull()
     .$defaultFn(() => new Date()),
@@ -354,10 +355,36 @@ export const verifications = sqliteTable("verifications", {
     .$defaultFn(() => new Date()),
 });
 
+// Invites table for admin invite-only signups
+export const invites = sqliteTable(
+  "invites",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => nanoid()),
+    email: text("email").notNull(),
+    token: text("token").notNull().unique(),
+    status: text("status").notNull().default("pending"), // pending | accepted | revoked
+    invitedBy: text("invited_by")
+      .notNull()
+      .references(() => users.id),
+    expiresAt: integer("expires_at", { mode: "timestamp" }).notNull(),
+    acceptedAt: integer("accepted_at", { mode: "timestamp" }),
+    createdAt: integer("created_at", { mode: "timestamp" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+  },
+  (table) => [
+    index("invites_token_idx").on(table.token),
+    index("invites_email_idx").on(table.email),
+  ]
+);
+
 // Auth relations
 export const usersRelations = relations(users, ({ many }) => ({
   sessions: many(sessions),
   accounts: many(accounts),
+  invites: many(invites),
 }));
 
 export const sessionsRelations = relations(sessions, ({ one }) => ({
@@ -370,6 +397,13 @@ export const sessionsRelations = relations(sessions, ({ one }) => ({
 export const accountsRelations = relations(accounts, ({ one }) => ({
   user: one(users, {
     fields: [accounts.userId],
+    references: [users.id],
+  }),
+}));
+
+export const invitesRelations = relations(invites, ({ one }) => ({
+  inviter: one(users, {
+    fields: [invites.invitedBy],
     references: [users.id],
   }),
 }));
@@ -395,6 +429,8 @@ export type Activity = typeof activities.$inferSelect;
 export type NewActivity = typeof activities.$inferInsert;
 export type GmailToken = typeof gmailTokens.$inferSelect;
 export type NewGmailToken = typeof gmailTokens.$inferInsert;
+export type Invite = typeof invites.$inferSelect;
+export type NewInvite = typeof invites.$inferInsert;
 
 // Stage type
 export type CampaignContactStage =
@@ -427,4 +463,7 @@ export type ActivityType =
   | "email_sent"
   | "email_opened"
   | "email_replied"
-  | "note_added";
+  | "note_added"
+  | "user_invited"
+  | "invite_accepted"
+  | "user_removed";
