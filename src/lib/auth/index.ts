@@ -30,21 +30,53 @@ export function getAuth() {
         },
       },
     },
+    databaseHooks: {
+      user: {
+        create: {
+          async before(user) {
+            // First user gets admin role set BEFORE insertion
+            // so the session is created with the correct role
+            const result = await db
+              .select({ count: sql<number>`count(*)` })
+              .from(schema.users);
+            if (result[0].count === 0) {
+              return { data: { ...user, role: "admin" } };
+            }
+            return { data: user };
+          },
+          async after(user) {
+            // Mark invite as accepted for non-first users
+            const result = await db
+              .select({ count: sql<number>`count(*)` })
+              .from(schema.users);
+            if (result[0].count > 1) {
+              await db
+                .update(schema.invites)
+                .set({
+                  status: "accepted",
+                  acceptedAt: new Date(),
+                })
+                .where(
+                  and(
+                    eq(schema.invites.email, user.email.toLowerCase()),
+                    eq(schema.invites.status, "pending")
+                  )
+                );
+            }
+          },
+        },
+      },
+    },
     emailAndPassword: {
       enabled: true,
       minPasswordLength: 8,
       signUp: {
         async beforeCreate({ email }) {
-          // Check if this is the first user (they become admin automatically)
+          // Check if this is the first user (they're allowed automatically)
           const result = await db
             .select({ count: sql<number>`count(*)` })
             .from(schema.users);
-          const isFirstUser = result[0].count === 0;
-
-          if (isFirstUser) {
-            // First user is allowed — they'll be set as admin in afterCreate
-            return;
-          }
+          if (result[0].count === 0) return;
 
           // Otherwise, require a valid invite for this email
           const invite = await db
@@ -62,34 +94,6 @@ export function getAuth() {
             throw new Error(
               "Signups are invite-only. Ask your admin for an invite link."
             );
-          }
-        },
-        async afterCreate({ user }) {
-          // Check if this is the first user — make them admin
-          const result = await db
-            .select({ count: sql<number>`count(*)` })
-            .from(schema.users);
-          const isFirstUser = result[0].count === 1;
-
-          if (isFirstUser) {
-            await db
-              .update(schema.users)
-              .set({ role: "admin" })
-              .where(eq(schema.users.id, user.id));
-          } else {
-            // Mark the invite as accepted
-            await db
-              .update(schema.invites)
-              .set({
-                status: "accepted",
-                acceptedAt: new Date(),
-              })
-              .where(
-                and(
-                  eq(schema.invites.email, user.email.toLowerCase()),
-                  eq(schema.invites.status, "pending")
-                )
-              );
           }
         },
       },
