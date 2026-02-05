@@ -5,11 +5,18 @@ import { getEnv } from "@/lib/env";
 import { getDb } from "@/lib/db";
 import { getSession } from "@/lib/server/auth";
 import * as schema from "@/lib/db/schema";
+import { AuthError, ForbiddenError, NotFoundError, ValidationError } from "@/lib/errors";
+import {
+  validateInviteTokenInput,
+  createInviteInput,
+  revokeInviteInput,
+  removeUserInput,
+} from "@/lib/validation";
 
 async function requireAdmin() {
   const session = await getSession();
-  if (!session) throw new Error("Unauthorized");
-  if (session.user.role !== "admin") throw new Error("Admin access required");
+  if (!session) throw new AuthError("Unauthorized");
+  if (session.user.role !== "admin") throw new ForbiddenError("Admin access required");
   return session;
 }
 
@@ -25,7 +32,7 @@ export const checkIsFirstUser = createServerFn({ method: "GET" }).handler(
 );
 
 export const validateInviteToken = createServerFn({ method: "GET" })
-  .inputValidator((data: { token: string }) => data)
+  .inputValidator((data: unknown) => validateInviteTokenInput.parse(data))
   .handler(async ({ data }) => {
     const env = getEnv();
     const db = getDb(env.DB);
@@ -46,7 +53,7 @@ export const validateInviteToken = createServerFn({ method: "GET" })
   });
 
 export const createInvite = createServerFn({ method: "POST" })
-  .inputValidator((data: { email: string }) => data)
+  .inputValidator((data: unknown) => createInviteInput.parse(data))
   .handler(async ({ data }) => {
     const session = await requireAdmin();
     const env = getEnv();
@@ -60,7 +67,7 @@ export const createInvite = createServerFn({ method: "POST" })
       .from(schema.users)
       .where(eq(schema.users.email, email))
       .get();
-    if (existing) throw new Error("A user with this email already exists");
+    if (existing) throw new ValidationError("A user with this email already exists");
 
     // Check for existing pending invite
     const existingInvite = await db
@@ -112,7 +119,7 @@ export const listInvites = createServerFn({ method: "GET" }).handler(
 );
 
 export const revokeInvite = createServerFn({ method: "POST" })
-  .inputValidator((data: { id: string }) => data)
+  .inputValidator((data: unknown) => revokeInviteInput.parse(data))
   .handler(async ({ data }) => {
     await requireAdmin();
     const env = getEnv();
@@ -144,14 +151,14 @@ export const listUsers = createServerFn({ method: "GET" }).handler(
 );
 
 export const removeUser = createServerFn({ method: "POST" })
-  .inputValidator((data: { id: string }) => data)
+  .inputValidator((data: unknown) => removeUserInput.parse(data))
   .handler(async ({ data }) => {
     const session = await requireAdmin();
     const env = getEnv();
     const db = getDb(env.DB);
 
     if (data.id === session.user.id) {
-      throw new Error("You cannot remove yourself");
+      throw new ValidationError("You cannot remove yourself");
     }
 
     const user = await db
@@ -159,7 +166,7 @@ export const removeUser = createServerFn({ method: "POST" })
       .from(schema.users)
       .where(eq(schema.users.id, data.id))
       .get();
-    if (!user) throw new Error("User not found");
+    if (!user) throw new NotFoundError("User", data.id);
 
     // Delete sessions first, then account, then user
     await db

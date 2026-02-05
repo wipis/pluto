@@ -2,10 +2,16 @@ import { createServerFn } from "@tanstack/react-start";
 import { eq, desc, and } from "drizzle-orm";
 import { getDb, campaignContacts, activities } from "@/lib/db";
 import { getEnv } from "@/lib/env";
+import {
+  getReviewQueueInput,
+  approveDraftInput,
+  rejectDraftInput,
+  updateDraftInput,
+} from "@/lib/validation";
 
 // Get drafts for review queue
 export const getReviewQueue = createServerFn({ method: "GET" })
-  .inputValidator((data?: { campaignId?: string }) => data ?? {})
+  .inputValidator((data: unknown) => getReviewQueueInput.parse(data))
   .handler(async ({ data }) => {
     const env = getEnv();
     const db = getDb(env.DB);
@@ -31,13 +37,7 @@ export const getReviewQueue = createServerFn({ method: "GET" })
 
 // Approve a draft
 export const approveDraft = createServerFn({ method: "POST" })
-  .inputValidator(
-    (data: {
-      campaignContactId: string;
-      finalSubject: string;
-      finalBody: string;
-    }) => data
-  )
+  .inputValidator((data: unknown) => approveDraftInput.parse(data))
   .handler(async ({ data }) => {
     const env = getEnv();
     const db = getDb(env.DB);
@@ -71,7 +71,7 @@ export const approveDraft = createServerFn({ method: "POST" })
 
 // Reject a draft (skip contact)
 export const rejectDraft = createServerFn({ method: "POST" })
-  .inputValidator((data: { campaignContactId: string }) => data)
+  .inputValidator((data: unknown) => rejectDraftInput.parse(data))
   .handler(async ({ data }) => {
     const env = getEnv();
     const db = getDb(env.DB);
@@ -102,13 +102,7 @@ export const rejectDraft = createServerFn({ method: "POST" })
 
 // Update draft content without approving
 export const updateDraft = createServerFn({ method: "POST" })
-  .inputValidator(
-    (data: {
-      campaignContactId: string;
-      draftSubject?: string;
-      draftBody?: string;
-    }) => data
-  )
+  .inputValidator((data: unknown) => updateDraftInput.parse(data))
   .handler(async ({ data }) => {
     const env = getEnv();
     const db = getDb(env.DB);

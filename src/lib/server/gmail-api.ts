@@ -1,3 +1,5 @@
+import { ExternalServiceError } from "@/lib/errors";
+
 const GMAIL_API_BASE = "https://gmail.googleapis.com/gmail/v1/users/me";
 
 interface SendEmailParams {
@@ -77,7 +79,7 @@ export async function sendGmailEmail({
 
   if (!response.ok) {
     const error = await response.text();
-    throw new Error(`Gmail send failed: ${response.status} - ${error}`);
+    throw new ExternalServiceError("Gmail", `Send failed: ${response.status} - ${error}`, { retryable: response.status >= 500 });
   }
 
   return response.json();
@@ -98,7 +100,7 @@ export async function getMessage(
 
   if (!response.ok) {
     const error = await response.text();
-    throw new Error(`Gmail get message failed: ${response.status} - ${error}`);
+    throw new ExternalServiceError("Gmail", `Get message failed: ${response.status} - ${error}`, { retryable: response.status >= 500 });
   }
 
   return response.json();
@@ -119,7 +121,7 @@ export async function getThread(
 
   if (!response.ok) {
     const error = await response.text();
-    throw new Error(`Gmail get thread failed: ${response.status} - ${error}`);
+    throw new ExternalServiceError("Gmail", `Get thread failed: ${response.status} - ${error}`, { retryable: response.status >= 500 });
   }
 
   return response.json();
@@ -146,7 +148,7 @@ export async function listMessages(
 
   if (!response.ok) {
     const error = await response.text();
-    throw new Error(`Gmail list messages failed: ${response.status} - ${error}`);
+    throw new ExternalServiceError("Gmail", `List messages failed: ${response.status} - ${error}`, { retryable: response.status >= 500 });
   }
 
   return response.json();
@@ -166,7 +168,7 @@ export async function getGmailProfile(
 
   if (!response.ok) {
     const error = await response.text();
-    throw new Error(`Gmail get profile failed: ${response.status} - ${error}`);
+    throw new ExternalServiceError("Gmail", `Get profile failed: ${response.status} - ${error}`, { retryable: response.status >= 500 });
   }
 
   return response.json();

@@ -8,12 +8,20 @@ import {
   products,
 } from "@/lib/db";
 import { getEnv } from "@/lib/env";
+import { NotFoundError } from "@/lib/errors";
+import {
+  getCampaignsInput,
+  getCampaignInput,
+  createCampaignInput,
+  updateCampaignInput,
+  addContactsToCampaignInput,
+  removeContactFromCampaignInput,
+  getCampaignContactsByStageInput,
+} from "@/lib/validation";
 
 // Get all campaigns with counts
 export const getCampaigns = createServerFn({ method: "GET" })
-  .inputValidator(
-    (data?: { status?: string; product?: string }) => data ?? {}
-  )
+  .inputValidator((data: unknown) => getCampaignsInput.parse(data))
   .handler(async ({ data }) => {
     const env = getEnv();
     const db = getDb(env.DB);
@@ -60,7 +68,7 @@ export const getCampaigns = createServerFn({ method: "GET" })
 
 // Get single campaign with contacts
 export const getCampaign = createServerFn({ method: "GET" })
-  .inputValidator((data: { id: string }) => data)
+  .inputValidator((data: unknown) => getCampaignInput.parse(data))
   .handler(async ({ data }) => {
     const env = getEnv();
     const db = getDb(env.DB);
@@ -84,15 +92,7 @@ export const getCampaign = createServerFn({ method: "GET" })
 
 // Create campaign
 export const createCampaign = createServerFn({ method: "POST" })
-  .inputValidator(
-    (data: {
-      name: string;
-      product: string;
-      description?: string;
-      templatePrompt?: string;
-      gmailAccountId?: string;
-    }) => data
-  )
+  .inputValidator((data: unknown) => createCampaignInput.parse(data))
   .handler(async ({ data }) => {
     const env = getEnv();
     const db = getDb(env.DB);
@@ -103,7 +103,7 @@ export const createCampaign = createServerFn({ method: "POST" })
     });
 
     if (!product) {
-      throw new Error("Product not found");
+      throw new NotFoundError("Product", data.product);
     }
 
     const [campaign] = await db
@@ -123,17 +123,7 @@ export const createCampaign = createServerFn({ method: "POST" })
 
 // Update campaign
 export const updateCampaign = createServerFn({ method: "POST" })
-  .inputValidator(
-    (data: {
-      id: string;
-      name?: string;
-      product?: string;
-      description?: string;
-      templatePrompt?: string;
-      status?: "draft" | "active" | "paused" | "completed";
-      gmailAccountId?: string;
-    }) => data
-  )
+  .inputValidator((data: unknown) => updateCampaignInput.parse(data))
   .handler(async ({ data }) => {
     const env = getEnv();
     const db = getDb(env.DB);
@@ -154,7 +144,7 @@ export const updateCampaign = createServerFn({ method: "POST" })
 
 // Add contacts to campaign
 export const addContactsToCampaign = createServerFn({ method: "POST" })
-  .inputValidator((data: { campaignId: string; contactIds: string[] }) => data)
+  .inputValidator((data: unknown) => addContactsToCampaignInput.parse(data))
   .handler(async ({ data }) => {
     const env = getEnv();
     const db = getDb(env.DB);
@@ -199,7 +189,7 @@ export const addContactsToCampaign = createServerFn({ method: "POST" })
 
 // Remove contact from campaign
 export const removeContactFromCampaign = createServerFn({ method: "POST" })
-  .inputValidator((data: { campaignId: string; contactId: string }) => data)
+  .inputValidator((data: unknown) => removeContactFromCampaignInput.parse(data))
   .handler(async ({ data }) => {
     const env = getEnv();
     const db = getDb(env.DB);
@@ -218,7 +208,7 @@ export const removeContactFromCampaign = createServerFn({ method: "POST" })
 
 // Get campaign contacts by stage
 export const getCampaignContactsByStage = createServerFn({ method: "GET" })
-  .inputValidator((data: { campaignId: string; stage?: string }) => data)
+  .inputValidator((data: unknown) => getCampaignContactsByStageInput.parse(data))
   .handler(async ({ data }) => {
     const env = getEnv();
     const db = getDb(env.DB);

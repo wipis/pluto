@@ -7,6 +7,7 @@ import {
   processSending,
   processReplyCheck,
 } from "@/lib/queue/processors";
+import { validateEnv } from "@/lib/env-validation";
 
 // Import the TanStack Start handler
 import tanstackHandler from "@tanstack/react-start/server-entry";
@@ -14,10 +15,14 @@ import tanstackHandler from "@tanstack/react-start/server-entry";
 // Combined handler with both HTTP fetch and queue consumer
 const handler: ExportedHandler<Cloudflare.Env, JobMessage> = {
   // HTTP request handler from TanStack Start
-  fetch: tanstackHandler.fetch,
+  fetch: async (request, env, ctx) => {
+    validateEnv(env);
+    return tanstackHandler.fetch(request, env, ctx);
+  },
 
   // Queue consumer handler
   async queue(batch: MessageBatch<JobMessage>, env: Cloudflare.Env): Promise<void> {
+    validateEnv(env);
     for (const message of batch.messages) {
       const job = message.body;
 

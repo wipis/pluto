@@ -3,6 +3,8 @@ import { eq, and, inArray } from "drizzle-orm";
 import { getDb, campaignContacts, companies, campaigns, activities, products } from "@/lib/db";
 import { getEnv } from "@/lib/env";
 import { buildEnrichmentQuery } from "./products";
+import { NotFoundError, ExternalServiceError } from "@/lib/errors";
+import { enrichCompanyInput, enrichCampaignContactsInput } from "@/lib/validation";
 
 interface ExaResult {
   title: string;
@@ -73,7 +75,7 @@ export async function searchExa(options: SearchExaOptions): Promise<ExaResult[]>
 
   if (!response.ok) {
     const error = await response.text();
-    throw new Error(`Exa API error: ${response.status} - ${error}`);
+    throw new ExternalServiceError("Exa", `${response.status} - ${error}`, { retryable: response.status >= 500 });
   }
 
   const data: ExaResponse = await response.json();
@@ -216,13 +218,13 @@ export function scoreEnrichmentQuality(
 
 // Enrich a single company
 export const enrichCompany = createServerFn({ method: "POST" })
-  .inputValidator((data: { companyId: string; productId?: string }) => data)
+  .inputValidator((data: unknown) => enrichCompanyInput.parse(data))
   .handler(async ({ data }) => {
     const env = getEnv();
     const db = getDb(env.DB);
 
     if (!env.EXA_API_KEY) {
-      throw new Error("EXA_API_KEY not configured");
+      throw new ExternalServiceError("Exa", "EXA_API_KEY not configured", { retryable: false });
     }
 
     const company = await db.query.companies.findFirst({
@@ -230,7 +232,7 @@ export const enrichCompany = createServerFn({ method: "POST" })
     });
 
     if (!company) {
-      throw new Error("Company not found");
+      throw new NotFoundError("Company", data.companyId);
     }
 
     // Build query based on product or generic
@@ -272,13 +274,13 @@ export const enrichCompany = createServerFn({ method: "POST" })
 
 // Enrich campaign contacts
 export const enrichCampaignContacts = createServerFn({ method: "POST" })
-  .inputValidator((data: { campaignId: string; contactIds?: string[] }) => data)
+  .inputValidator((data: unknown) => enrichCampaignContactsInput.parse(data))
   .handler(async ({ data }) => {
     const env = getEnv();
     const db = getDb(env.DB);
 
     if (!env.EXA_API_KEY) {
-      throw new Error("EXA_API_KEY not configured");
+      throw new ExternalServiceError("Exa", "EXA_API_KEY not configured", { retryable: false });
     }
 
     // Get campaign to know which product
@@ -287,7 +289,7 @@ export const enrichCampaignContacts = createServerFn({ method: "POST" })
     });
 
     if (!campaign) {
-      throw new Error("Campaign not found");
+      throw new NotFoundError("Campaign", data.campaignId);
     }
 
     const product = await db.query.products.findFirst({
@@ -295,7 +297,7 @@ export const enrichCampaignContacts = createServerFn({ method: "POST" })
     });
 
     if (!product) {
-      throw new Error("Product not found for campaign");
+      throw new NotFoundError("Product", campaign.product);
     }
 
     // Get contacts to enrich

@@ -2,13 +2,17 @@ import { createServerFn } from "@tanstack/react-start";
 import { eq, like, desc, isNotNull, count, sql } from "drizzle-orm";
 import { getDb, companies, contacts } from "@/lib/db";
 import { getEnv } from "@/lib/env";
+import {
+  getCompaniesInput,
+  getCompanyInput,
+  createCompanyInput,
+  updateCompanyInput,
+  findOrCreateCompanyInput,
+} from "@/lib/validation";
 
 // Get all companies with contact counts
 export const getCompanies = createServerFn({ method: "GET" })
-  .inputValidator(
-    (data?: { search?: string; enriched?: boolean; limit?: number; offset?: number }) =>
-      data ?? {}
-  )
+  .inputValidator((data: unknown) => getCompaniesInput.parse(data))
   .handler(async ({ data }) => {
     const env = getEnv();
     const db = getDb(env.DB);
@@ -56,7 +60,7 @@ export const getCompanies = createServerFn({ method: "GET" })
 
 // Get single company with contacts
 export const getCompany = createServerFn({ method: "GET" })
-  .inputValidator((data: { id: string }) => data)
+  .inputValidator((data: unknown) => getCompanyInput.parse(data))
   .handler(async ({ data }) => {
     const env = getEnv();
     const db = getDb(env.DB);
@@ -75,7 +79,7 @@ export const getCompany = createServerFn({ method: "GET" })
 
 // Create company
 export const createCompany = createServerFn({ method: "POST" })
-  .inputValidator((data: { name: string; domain?: string }) => data)
+  .inputValidator((data: unknown) => createCompanyInput.parse(data))
   .handler(async ({ data }) => {
     const env = getEnv();
     const db = getDb(env.DB);
@@ -93,7 +97,7 @@ export const createCompany = createServerFn({ method: "POST" })
 
 // Update company
 export const updateCompany = createServerFn({ method: "POST" })
-  .inputValidator((data: { id: string; name?: string; domain?: string }) => data)
+  .inputValidator((data: unknown) => updateCompanyInput.parse(data))
   .handler(async ({ data }) => {
     const env = getEnv();
     const db = getDb(env.DB);
@@ -114,7 +118,7 @@ export const updateCompany = createServerFn({ method: "POST" })
 
 // Find or create company by domain
 export const findOrCreateCompany = createServerFn({ method: "POST" })
-  .inputValidator((data: { name: string; domain?: string }) => data)
+  .inputValidator((data: unknown) => findOrCreateCompanyInput.parse(data))
   .handler(async ({ data }) => {
     const env = getEnv();
     const db = getDb(env.DB);

@@ -1,5 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState, useCallback } from "react";
+import { handleError } from "@/lib/handle-error";
 import { importContacts } from "@/lib/server/import";
 import { getCampaigns } from "@/lib/server/campaigns";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -138,7 +139,7 @@ function ImportContacts() {
       };
       reader.readAsText(file);
     } catch (error) {
-      console.error("Import failed:", error);
+      handleError(error, "Import failed");
       setIsImporting(false);
     }
   };

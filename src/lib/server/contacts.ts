@@ -2,10 +2,17 @@ import { createServerFn } from "@tanstack/react-start";
 import { eq, like, desc, or, count } from "drizzle-orm";
 import { getDb, contacts, companies, activities, emails } from "@/lib/db";
 import { getEnv } from "@/lib/env";
+import {
+  getContactsInput,
+  getContactInput,
+  createContactInput,
+  updateContactInput,
+  deleteContactInput,
+} from "@/lib/validation";
 
 // Get all contacts with company info
 export const getContacts = createServerFn({ method: "GET" })
-  .inputValidator((data: { search?: string; limit?: number; offset?: number }) => data)
+  .inputValidator((data: unknown) => getContactsInput.parse(data))
   .handler(async ({ data }) => {
     const env = getEnv();
     const db = getDb(env.DB);
@@ -53,7 +60,7 @@ export const getContacts = createServerFn({ method: "GET" })
 
 // Get single contact with full details
 export const getContact = createServerFn({ method: "GET" })
-  .inputValidator((data: { id: string }) => data)
+  .inputValidator((data: unknown) => getContactInput.parse(data))
   .handler(async ({ data }) => {
     const env = getEnv();
     const db = getDb(env.DB);
@@ -80,21 +87,7 @@ export const getContact = createServerFn({ method: "GET" })
 
 // Create contact
 export const createContact = createServerFn({ method: "POST" })
-  .inputValidator(
-    (data: {
-      firstName: string;
-      lastName: string;
-      email: string;
-      companyId?: string;
-      companyName?: string;
-      domain?: string;
-      title?: string;
-      linkedinUrl?: string;
-      phone?: string;
-      notes?: string;
-      tags?: string[];
-    }) => data
-  )
+  .inputValidator((data: unknown) => createContactInput.parse(data))
   .handler(async ({ data }) => {
     const env = getEnv();
     const db = getDb(env.DB);
@@ -140,20 +133,7 @@ export const createContact = createServerFn({ method: "POST" })
 
 // Update contact
 export const updateContact = createServerFn({ method: "POST" })
-  .inputValidator(
-    (data: {
-      id: string;
-      firstName?: string;
-      lastName?: string;
-      email?: string;
-      companyId?: string;
-      title?: string;
-      linkedinUrl?: string;
-      phone?: string;
-      notes?: string;
-      tags?: string[];
-    }) => data
-  )
+  .inputValidator((data: unknown) => updateContactInput.parse(data))
   .handler(async ({ data }) => {
     const env = getEnv();
     const db = getDb(env.DB);
@@ -181,7 +161,7 @@ export const updateContact = createServerFn({ method: "POST" })
 
 // Delete contact
 export const deleteContact = createServerFn({ method: "POST" })
-  .inputValidator((data: { id: string }) => data)
+  .inputValidator((data: unknown) => deleteContactInput.parse(data))
   .handler(async ({ data }) => {
     const env = getEnv();
     const db = getDb(env.DB);

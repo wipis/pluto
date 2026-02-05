@@ -2,6 +2,7 @@ import { eq } from "drizzle-orm";
 import { getDb, campaignContacts, activities, companies, products } from "@/lib/db";
 import { buildEnrichmentQuery } from "@/lib/server/products";
 import type { JobMessage, JobResult } from "./types";
+import { isRetryable } from "@/lib/errors";
 
 // Process a single enrichment job
 export async function processEnrichment(
@@ -308,16 +309,10 @@ export async function processSending(
       .set({ stage: "approved", updatedAt: new Date() })
       .where(eq(campaignContacts.id, cc.id));
 
-    const errorMessage = error instanceof Error ? error.message : "Unknown error";
-
-    // Don't retry auth errors
-    const isAuthError =
-      errorMessage.includes("401") || errorMessage.includes("403");
-
     return {
       success: false,
-      error: errorMessage,
-      retryable: !isAuthError,
+      error: error instanceof Error ? error.message : "Unknown error",
+      retryable: isRetryable(error),
     };
   }
 }

@@ -4,6 +4,12 @@ import { getDb, campaignContacts, emails, gmailTokens } from "@/lib/db";
 import { getEnv } from "@/lib/env";
 import { generateAuthUrl, getValidAccessToken } from "./gmail-auth";
 import { sendGmailEmail, getThread, getGmailProfile } from "./gmail-api";
+import { NotFoundError, ValidationError } from "@/lib/errors";
+import {
+  initiateGmailConnectionInput,
+  sendEmailInput,
+  sendBatchInput,
+} from "@/lib/validation";
 
 // Get Gmail connection status
 export const getGmailConnection = createServerFn({ method: "GET" })
@@ -30,7 +36,7 @@ export const getGmailConnection = createServerFn({ method: "GET" })
 
 // Initiate Gmail OAuth connection
 export const initiateGmailConnection = createServerFn({ method: "POST" })
-  .inputValidator((data: { redirectUrl: string }) => data)
+  .inputValidator((data: unknown) => initiateGmailConnectionInput.parse(data))
   .handler(async ({ data }) => {
     // The redirectUrl from the client is used to build the callback URI
     const url = new URL(data.redirectUrl);
@@ -44,7 +50,7 @@ export const initiateGmailConnection = createServerFn({ method: "POST" })
 
 // Send a single email
 export const sendEmail = createServerFn({ method: "POST" })
-  .inputValidator((data: { campaignContactId: string }) => data)
+  .inputValidator((data: unknown) => sendEmailInput.parse(data))
   .handler(async ({ data }) => {
     const env = getEnv();
     const db = getDb(env.DB);
@@ -56,11 +62,11 @@ export const sendEmail = createServerFn({ method: "POST" })
     });
 
     if (!cc) {
-      throw new Error("Campaign contact not found");
+      throw new NotFoundError("Campaign contact", data.campaignContactId);
     }
 
     if (cc.stage !== "approved") {
-      throw new Error("Email must be approved before sending");
+      throw new ValidationError("Email must be approved before sending");
     }
 
     // Get valid access token for the campaign's Gmail account (or default)
@@ -74,7 +80,7 @@ export const sendEmail = createServerFn({ method: "POST" })
     const body = cc.finalBody || cc.draftBody;
 
     if (!subject || !body) {
-      throw new Error("Email subject and body are required");
+      throw new ValidationError("Email subject and body are required");
     }
 
     // Send via Gmail API
@@ -118,7 +124,7 @@ export const sendEmail = createServerFn({ method: "POST" })
 
 // Send batch of approved emails
 export const sendBatch = createServerFn({ method: "POST" })
-  .inputValidator((data: { campaignId: string; contactIds?: string[] }) => data)
+  .inputValidator((data: unknown) => sendBatchInput.parse(data))
   .handler(async ({ data }) => {
     const env = getEnv();
     const db = getDb(env.DB);

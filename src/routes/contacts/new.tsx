@@ -1,5 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
+import { handleError } from "@/lib/handle-error";
 import { createContact } from "@/lib/server/contacts";
 import { getCompanies } from "@/lib/server/companies";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -37,7 +38,7 @@ function NewContact() {
       const contact = await createContact({ data: formData });
       navigate({ to: "/contacts/$id", params: { id: contact.id } });
     } catch (error) {
-      console.error("Failed to create contact:", error);
+      handleError(error, "Failed to create contact");
       setIsSubmitting(false);
     }
   };

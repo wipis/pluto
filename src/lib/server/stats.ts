@@ -9,6 +9,7 @@ import {
   activities,
 } from "@/lib/db";
 import { getEnv } from "@/lib/env";
+import { getContactActivitiesInput } from "@/lib/validation";
 
 // Get dashboard stats
 export const getDashboardStats = createServerFn({ method: "GET" }).handler(
@@ -97,7 +98,7 @@ export const getDashboardStats = createServerFn({ method: "GET" }).handler(
 
 // Get activity feed for a contact
 export const getContactActivities = createServerFn({ method: "GET" })
-  .inputValidator((data: { contactId: string; limit?: number }) => data)
+  .inputValidator((data: unknown) => getContactActivitiesInput.parse(data))
   .handler(async ({ data }) => {
     const env = getEnv();
     const db = getDb(env.DB);

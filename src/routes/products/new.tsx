@@ -1,5 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
+import { handleError } from "@/lib/handle-error";
 import { createProduct } from "@/lib/server/products";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -60,8 +61,7 @@ function NewProduct() {
       });
       navigate({ to: "/products/$id", params: { id: product.id } });
     } catch (err) {
-      console.error("Failed to create product:", err);
-      setError(err instanceof Error ? err.message : "Failed to create product");
+      handleError(err, "Failed to create product");
       setIsSubmitting(false);
     }
   };

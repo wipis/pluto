@@ -1,5 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
+import { toast } from "sonner";
+import { handleError } from "@/lib/handle-error";
 import { getCampaign, updateCampaign, addContactsToCampaign } from "@/lib/server/campaigns";
 import { getContacts } from "@/lib/server/contacts";
 import { getGmailAccounts } from "@/lib/server/gmail-auth";
@@ -199,15 +201,14 @@ function CampaignDetail() {
     try {
       const result = await enqueueEnrichment({ data: { campaignId: campaign.id } });
       if (result.queued === 0) {
-        alert("No contacts to enrich. Make sure contacts are in 'new' stage.");
+        toast.info("No contacts to enrich. Make sure contacts are in 'new' stage.");
         setIsProcessing(false);
         setProcessingAction("");
       } else {
         setProcessingAction(`Enriching ${result.queued} contacts...`);
       }
     } catch (error) {
-      console.error("Enrichment failed:", error);
-      alert(`Enrichment failed: ${error instanceof Error ? error.message : "Unknown error"}`);
+      handleError(error, "Enrichment failed");
       setIsProcessing(false);
       setProcessingAction("");
     }
@@ -219,15 +220,14 @@ function CampaignDetail() {
     try {
       const result = await enqueueDrafting({ data: { campaignId: campaign.id } });
       if (result.queued === 0) {
-        alert("No contacts to draft. Make sure contacts are in 'enriched' stage.");
+        toast.info("No contacts to draft. Make sure contacts are in 'enriched' stage.");
         setIsProcessing(false);
         setProcessingAction("");
       } else {
         setProcessingAction(`Drafting ${result.queued} emails...`);
       }
     } catch (error) {
-      console.error("Drafting failed:", error);
-      alert(`Drafting failed: ${error instanceof Error ? error.message : "Unknown error"}`);
+      handleError(error, "Drafting failed");
       setIsProcessing(false);
       setProcessingAction("");
     }
@@ -239,15 +239,14 @@ function CampaignDetail() {
     try {
       const result = await enqueueSending({ data: { campaignId: campaign.id } });
       if (result.queued === 0) {
-        alert("No emails to send. Make sure emails are approved first.");
+        toast.info("No emails to send. Make sure emails are approved first.");
         setIsProcessing(false);
         setProcessingAction("");
       } else {
         setProcessingAction(`Sending ${result.queued} emails (~${result.estimatedMinutes} min)...`);
       }
     } catch (error) {
-      console.error("Sending failed:", error);
-      alert(`Sending failed: ${error instanceof Error ? error.message : "Unknown error"}`);
+      handleError(error, "Sending failed");
       setIsProcessing(false);
       setProcessingAction("");
     }

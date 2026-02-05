@@ -2,6 +2,8 @@ import { createServerFn } from "@tanstack/react-start";
 import { eq, desc } from "drizzle-orm";
 import { getDb, gmailTokens } from "@/lib/db";
 import { getEnv } from "@/lib/env";
+import { ExternalServiceError, AuthError } from "@/lib/errors";
+import { deleteGmailAccountInput, updateAccountLabelInput } from "@/lib/validation";
 
 const GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth";
 const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
@@ -65,7 +67,7 @@ export async function exchangeCodeForTokens(
 
   if (!response.ok) {
     const error = await response.text();
-    throw new Error(`Token exchange failed: ${error}`);
+    throw new ExternalServiceError("Google", `Token exchange failed: ${error}`, { retryable: false });
   }
 
   return response.json();
@@ -91,7 +93,7 @@ export async function refreshAccessToken(
 
   if (!response.ok) {
     const error = await response.text();
-    throw new Error(`Token refresh failed: ${error}`);
+    throw new ExternalServiceError("Google", `Token refresh failed: ${error}`, { retryable: false });
   }
 
   return response.json();
@@ -108,7 +110,7 @@ export async function getUserEmail(accessToken: string): Promise<string> {
   );
 
   if (!response.ok) {
-    throw new Error("Failed to get user info");
+    throw new ExternalServiceError("Google", "Failed to get user info", { retryable: false });
   }
 
   const data: UserInfo = await response.json();
@@ -129,7 +131,7 @@ export async function getValidAccessToken(accountId?: string): Promise<string> {
       });
 
   if (!tokens) {
-    throw new Error("Gmail not connected. Please connect Gmail in Settings.");
+    throw new AuthError("Gmail not connected. Please connect Gmail in Settings.");
   }
 
   // Check if token expires in next 5 minutes
@@ -164,7 +166,7 @@ export async function saveTokens(
   const db = getDb(env.DB);
 
   if (!tokens.refresh_token) {
-    throw new Error("No refresh token received. Please try connecting again.");
+    throw new ExternalServiceError("Google", "No refresh token received. Please try connecting again.", { retryable: false });
   }
 
   // Always insert a new account (supports multiple accounts)
@@ -205,7 +207,7 @@ export const getGmailAccounts = createServerFn({ method: "GET" }).handler(
 
 // Delete a Gmail account
 export const deleteGmailAccount = createServerFn({ method: "POST" })
-  .inputValidator((data: { accountId: string }) => data)
+  .inputValidator((data: unknown) => deleteGmailAccountInput.parse(data))
   .handler(async ({ data }) => {
     const env = getEnv();
     const db = getDb(env.DB);
@@ -217,7 +219,7 @@ export const deleteGmailAccount = createServerFn({ method: "POST" })
 
 // Update account label
 export const updateAccountLabel = createServerFn({ method: "POST" })
-  .inputValidator((data: { accountId: string; label: string }) => data)
+  .inputValidator((data: unknown) => updateAccountLabelInput.parse(data))
   .handler(async ({ data }) => {
     const env = getEnv();
     const db = getDb(env.DB);

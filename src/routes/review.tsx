@@ -1,5 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
+import { handleError } from "@/lib/handle-error";
 import { getReviewQueue, approveDraft, rejectDraft, updateDraft } from "@/lib/server/review";
 import { regenerateDraft } from "@/lib/server/drafting";
 import { sendEmail } from "@/lib/server/gmail";
@@ -60,7 +61,7 @@ function ReviewQueue() {
       });
       moveToNext();
     } catch (error) {
-      console.error("Approve failed:", error);
+      handleError(error, "Approve failed");
     }
     setIsProcessing(false);
   };
@@ -79,7 +80,7 @@ function ReviewQueue() {
       await sendEmail({ data: { campaignContactId: selected.id } });
       moveToNext();
     } catch (error) {
-      console.error("Send failed:", error);
+      handleError(error, "Send failed");
     }
     setIsProcessing(false);
   };
@@ -91,7 +92,7 @@ function ReviewQueue() {
       await rejectDraft({ data: { campaignContactId: selected.id } });
       moveToNext();
     } catch (error) {
-      console.error("Reject failed:", error);
+      handleError(error, "Reject failed");
     }
     setIsProcessing(false);
   };
@@ -110,7 +111,7 @@ function ReviewQueue() {
       setEditedBody(result.body);
       setFeedback("");
     } catch (error) {
-      console.error("Regenerate failed:", error);
+      handleError(error, "Regenerate failed");
     }
     setIsProcessing(false);
   };

@@ -1,5 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
+import { handleError } from "@/lib/handle-error";
 import { createCampaign } from "@/lib/server/campaigns";
 import { getProducts } from "@/lib/server/products";
 import { getGmailAccounts } from "@/lib/server/gmail-auth";
@@ -68,7 +69,7 @@ function NewCampaign() {
       });
       navigate({ to: "/campaigns/$id", params: { id: campaign.id } });
     } catch (error) {
-      console.error("Failed to create campaign:", error);
+      handleError(error, "Failed to create campaign");
       setIsSubmitting(false);
     }
   };

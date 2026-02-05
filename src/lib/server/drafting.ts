@@ -3,6 +3,8 @@ import { eq, and, inArray, sql } from "drizzle-orm";
 import { getDb, campaignContacts, campaigns, activities, products } from "@/lib/db";
 import { getEnv } from "@/lib/env";
 import type { Product } from "@/lib/db/schema";
+import { NotFoundError, ExternalServiceError } from "@/lib/errors";
+import { draftCampaignEmailsInput, regenerateDraftInput } from "@/lib/validation";
 
 interface ClaudeMessage {
   role: "user" | "assistant";
@@ -35,7 +37,7 @@ export async function callClaude(
 
   if (!response.ok) {
     const error = await response.text();
-    throw new Error(`Claude API error: ${response.status} - ${error}`);
+    throw new ExternalServiceError("Claude", `${response.status} - ${error}`, { retryable: response.status >= 500 });
   }
 
   const data: ClaudeResponse = await response.json();
@@ -208,13 +210,13 @@ BODY:
 
 // Draft emails for campaign contacts
 export const draftCampaignEmails = createServerFn({ method: "POST" })
-  .inputValidator((data: { campaignId: string; contactIds?: string[] }) => data)
+  .inputValidator((data: unknown) => draftCampaignEmailsInput.parse(data))
   .handler(async ({ data }) => {
     const env = getEnv();
     const db = getDb(env.DB);
 
     if (!env.ANTHROPIC_API_KEY) {
-      throw new Error("ANTHROPIC_API_KEY not configured");
+      throw new ExternalServiceError("Claude", "ANTHROPIC_API_KEY not configured", { retryable: false });
     }
 
     const campaign = await db.query.campaigns.findFirst({
@@ -222,7 +224,7 @@ export const draftCampaignEmails = createServerFn({ method: "POST" })
     });
 
     if (!campaign) {
-      throw new Error("Campaign not found");
+      throw new NotFoundError("Campaign", data.campaignId);
     }
 
     const product = await db.query.products.findFirst({
@@ -230,7 +232,7 @@ export const draftCampaignEmails = createServerFn({ method: "POST" })
     });
 
     if (!product) {
-      throw new Error("Product not found for campaign");
+      throw new NotFoundError("Product", campaign.product);
     }
 
     // Get enriched contacts ready for drafting
@@ -351,13 +353,13 @@ export const draftCampaignEmails = createServerFn({ method: "POST" })
 
 // Regenerate a single draft with optional feedback
 export const regenerateDraft = createServerFn({ method: "POST" })
-  .inputValidator((data: { campaignContactId: string; feedback?: string }) => data)
+  .inputValidator((data: unknown) => regenerateDraftInput.parse(data))
   .handler(async ({ data }) => {
     const env = getEnv();
     const db = getDb(env.DB);
 
     if (!env.ANTHROPIC_API_KEY) {
-      throw new Error("ANTHROPIC_API_KEY not configured");
+      throw new ExternalServiceError("Claude", "ANTHROPIC_API_KEY not configured", { retryable: false });
     }
 
     const cc = await db.query.campaignContacts.findFirst({
@@ -369,7 +371,7 @@ export const regenerateDraft = createServerFn({ method: "POST" })
     });
 
     if (!cc) {
-      throw new Error("Campaign contact not found");
+      throw new NotFoundError("Campaign contact", data.campaignContactId);
     }
 
     const product = await db.query.products.findFirst({
@@ -377,7 +379,7 @@ export const regenerateDraft = createServerFn({ method: "POST" })
     });
 
     if (!product) {
-      throw new Error("Product not found for campaign");
+      throw new NotFoundError("Product", cc.campaign.product);
     }
 
     let productValueProps: string[] = [];

@@ -1,5 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
+import { toast } from "sonner";
+import { handleError } from "@/lib/handle-error";
 import { initiateGmailConnection } from "@/lib/server/gmail";
 import {
   getGmailAccounts,
@@ -24,8 +26,6 @@ import {
   Plus,
   Trash2,
   Pencil,
-  AlertCircle,
-  CheckCircle,
   X,
   Users,
   Copy,
@@ -60,10 +60,6 @@ function Settings() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editLabel, setEditLabel] = useState("");
-  const [notification, setNotification] = useState<{
-    type: "success" | "error";
-    message: string;
-  } | null>(null);
 
   // Invite state
   const [inviteEmail, setInviteEmail] = useState("");
@@ -74,24 +70,13 @@ function Settings() {
   // Handle OAuth callback notifications
   useEffect(() => {
     if (success === "gmail_connected") {
-      setNotification({
-        type: "success",
-        message: "Gmail account connected successfully!",
-      });
+      toast.success("Gmail account connected successfully!");
       navigate({ to: "/settings", search: {}, replace: true });
     } else if (error) {
-      setNotification({ type: "error", message: decodeURIComponent(error) });
+      toast.error(decodeURIComponent(error));
       navigate({ to: "/settings", search: {}, replace: true });
     }
   }, [success, error, navigate]);
-
-  // Auto-dismiss notifications
-  useEffect(() => {
-    if (notification) {
-      const timer = setTimeout(() => setNotification(null), 5000);
-      return () => clearTimeout(timer);
-    }
-  }, [notification]);
 
   const handleConnectGmail = async () => {
     setIsConnecting(true);
@@ -102,8 +87,7 @@ function Settings() {
         window.location.href = result.authUrl;
       }
     } catch (error) {
-      console.error("Failed to initiate Gmail connection:", error);
-      setNotification({ type: "error", message: "Failed to connect Gmail" });
+      handleError(error, "Failed to connect Gmail");
       setIsConnecting(false);
     }
   };
@@ -112,14 +96,10 @@ function Settings() {
     setDeletingId(accountId);
     try {
       await deleteGmailAccount({ data: { accountId } });
-      setNotification({ type: "success", message: "Gmail account removed" });
+      toast.success("Gmail account removed");
       navigate({ to: "/settings", search: {} });
     } catch (error) {
-      console.error("Failed to delete Gmail account:", error);
-      setNotification({
-        type: "error",
-        message: "Failed to remove Gmail account",
-      });
+      handleError(error, "Failed to remove Gmail account");
     } finally {
       setDeletingId(null);
     }
@@ -133,12 +113,11 @@ function Settings() {
   const handleSaveLabel = async (accountId: string) => {
     try {
       await updateAccountLabel({ data: { accountId, label: editLabel } });
-      setNotification({ type: "success", message: "Label updated" });
+      toast.success("Label updated");
       setEditingId(null);
       navigate({ to: "/settings", search: {} });
     } catch (error) {
-      console.error("Failed to update label:", error);
-      setNotification({ type: "error", message: "Failed to update label" });
+      handleError(error, "Failed to update label");
     }
   };
 
@@ -157,12 +136,9 @@ function Settings() {
       const link = `${window.location.origin}/signup?token=${result.token}`;
       setInviteLink(link);
       setInviteEmail("");
-      setNotification({ type: "success", message: "Invite created" });
-    } catch (err: any) {
-      setNotification({
-        type: "error",
-        message: err.message || "Failed to create invite",
-      });
+      toast.success("Invite created");
+    } catch (err) {
+      handleError(err, "Failed to create invite");
     } finally {
       setIsInviting(false);
     }
@@ -171,17 +147,17 @@ function Settings() {
   const handleCopyLink = () => {
     if (inviteLink) {
       navigator.clipboard.writeText(inviteLink);
-      setNotification({ type: "success", message: "Link copied to clipboard" });
+      toast.success("Link copied to clipboard");
     }
   };
 
   const handleRevokeInvite = async (id: string) => {
     try {
       await revokeInvite({ data: { id } });
-      setNotification({ type: "success", message: "Invite revoked" });
+      toast.success("Invite revoked");
       navigate({ to: "/settings", search: {} });
     } catch (err) {
-      setNotification({ type: "error", message: "Failed to revoke invite" });
+      handleError(err, "Failed to revoke invite");
     }
   };
 
@@ -189,13 +165,10 @@ function Settings() {
     setRemovingId(id);
     try {
       await removeUser({ data: { id } });
-      setNotification({ type: "success", message: "User removed" });
+      toast.success("User removed");
       navigate({ to: "/settings", search: {} });
-    } catch (err: any) {
-      setNotification({
-        type: "error",
-        message: err.message || "Failed to remove user",
-      });
+    } catch (err) {
+      handleError(err, "Failed to remove user");
     } finally {
       setRemovingId(null);
     }
@@ -209,23 +182,6 @@ function Settings() {
         <h1 className="text-2xl font-bold">Settings</h1>
         <p className="text-muted-foreground">Manage your integrations</p>
       </div>
-
-      {notification && (
-        <div
-          className={`flex items-center gap-2 p-3 rounded-md ${
-            notification.type === "success"
-              ? "bg-green-50 text-green-800 border border-green-200"
-              : "bg-red-50 text-red-800 border border-red-200"
-          }`}
-        >
-          {notification.type === "success" ? (
-            <CheckCircle className="h-4 w-4" />
-          ) : (
-            <AlertCircle className="h-4 w-4" />
-          )}
-          <span className="text-sm">{notification.message}</span>
-        </div>
-      )}
 
       {/* Team Management - Admin Only */}
       {isAdmin && (

@@ -1,5 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
+import { handleError } from "@/lib/handle-error";
 import {
   getProduct,
   updateProduct,
@@ -108,8 +109,7 @@ function EditProduct() {
       });
       navigate({ to: "/products" });
     } catch (err) {
-      console.error("Failed to update product:", err);
-      setError(err instanceof Error ? err.message : "Failed to update product");
+      handleError(err, "Failed to update product");
       setIsSubmitting(false);
     }
   };
@@ -121,8 +121,7 @@ function EditProduct() {
       await deleteProduct({ data: { id: product.id } });
       navigate({ to: "/products" });
     } catch (err) {
-      console.error("Failed to delete product:", err);
-      setError(err instanceof Error ? err.message : "Failed to delete product");
+      handleError(err, "Failed to delete product");
       setIsDeleting(false);
     }
   };

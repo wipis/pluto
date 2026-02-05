@@ -2,6 +2,13 @@ import { createServerFn } from "@tanstack/react-start";
 import { eq, desc } from "drizzle-orm";
 import { getDb, products, campaigns } from "@/lib/db";
 import { getEnv } from "@/lib/env";
+import { NotFoundError, ValidationError } from "@/lib/errors";
+import {
+  getProductInput,
+  createProductInput,
+  updateProductInput,
+  deleteProductInput,
+} from "@/lib/validation";
 
 // Helper: Build enrichment query from template
 export function buildEnrichmentQuery(
@@ -25,7 +32,7 @@ export const getProducts = createServerFn({ method: "GET" }).handler(
 
 // Get single product
 export const getProduct = createServerFn({ method: "GET" })
-  .inputValidator((data: { id: string }) => data)
+  .inputValidator((data: unknown) => getProductInput.parse(data))
   .handler(async ({ data }) => {
     const env = getEnv();
     const db = getDb(env.DB);
@@ -36,16 +43,7 @@ export const getProduct = createServerFn({ method: "GET" })
 
 // Create product
 export const createProduct = createServerFn({ method: "POST" })
-  .inputValidator(
-    (data: {
-      name: string;
-      description: string;
-      valueProps: string[];
-      targetAudience: string;
-      enrichmentQueryTemplate: string;
-      emailSystemPrompt: string;
-    }) => data
-  )
+  .inputValidator((data: unknown) => createProductInput.parse(data))
   .handler(async ({ data }) => {
     const env = getEnv();
     const db = getDb(env.DB);
@@ -68,17 +66,7 @@ export const createProduct = createServerFn({ method: "POST" })
 
 // Update product
 export const updateProduct = createServerFn({ method: "POST" })
-  .inputValidator(
-    (data: {
-      id: string;
-      name?: string;
-      description?: string;
-      valueProps?: string[];
-      targetAudience?: string;
-      enrichmentQueryTemplate?: string;
-      emailSystemPrompt?: string;
-    }) => data
-  )
+  .inputValidator((data: unknown) => updateProductInput.parse(data))
   .handler(async ({ data }) => {
     const env = getEnv();
     const db = getDb(env.DB);
@@ -100,7 +88,7 @@ export const updateProduct = createServerFn({ method: "POST" })
 
 // Delete product (only non-default, with campaign check)
 export const deleteProduct = createServerFn({ method: "POST" })
-  .inputValidator((data: { id: string }) => data)
+  .inputValidator((data: unknown) => deleteProductInput.parse(data))
   .handler(async ({ data }) => {
     const env = getEnv();
     const db = getDb(env.DB);
@@ -111,11 +99,11 @@ export const deleteProduct = createServerFn({ method: "POST" })
     });
 
     if (!product) {
-      throw new Error("Product not found");
+      throw new NotFoundError("Product", data.id);
     }
 
     if (product.isDefault) {
-      throw new Error("Cannot delete default products");
+      throw new ValidationError("Cannot delete default products");
     }
 
     // Check if product is used by any campaigns
@@ -125,7 +113,7 @@ export const deleteProduct = createServerFn({ method: "POST" })
     });
 
     if (campaignsUsingProduct.length > 0) {
-      throw new Error("Cannot delete product that is used by campaigns");
+      throw new ValidationError("Cannot delete product that is used by campaigns");
     }
 
     await db.delete(products).where(eq(products.id, data.id));

@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { eq, like } from "drizzle-orm";
 import { getDb, contacts, companies, activities, campaignContacts } from "@/lib/db";
 import { getEnv } from "@/lib/env";
+import { importContactsInput, parseCSVInput } from "@/lib/validation";
 
 interface CSVRow {
   firstName?: string;
@@ -16,7 +17,7 @@ interface CSVRow {
 
 // Import contacts from CSV data
 export const importContacts = createServerFn({ method: "POST" })
-  .inputValidator((data: { rows: CSVRow[]; campaignId?: string }) => data)
+  .inputValidator((data: unknown) => importContactsInput.parse(data))
   .handler(async ({ data }) => {
     const env = getEnv();
     const db = getDb(env.DB);
@@ -165,7 +166,7 @@ export const importContacts = createServerFn({ method: "POST" })
 
 // Parse CSV text into rows
 export const parseCSV = createServerFn({ method: "POST" })
-  .inputValidator((data: { csvText: string; columnMapping: Record<string, string> }) => data)
+  .inputValidator((data: unknown) => parseCSVInput.parse(data))
   .handler(async ({ data }) => {
     const lines = data.csvText.trim().split("\n");
     if (lines.length < 2) {

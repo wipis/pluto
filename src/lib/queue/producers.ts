@@ -3,10 +3,16 @@ import { eq, and, inArray } from "drizzle-orm";
 import { getDb, campaignContacts, campaigns } from "@/lib/db";
 import { getEnv } from "@/lib/env";
 import type { JobMessage } from "./types";
+import {
+  enqueueEnrichmentInput,
+  enqueueDraftingInput,
+  enqueueSendingInput,
+  getCampaignProgressInput,
+} from "@/lib/validation";
 
 // Enqueue enrichment jobs for campaign contacts
 export const enqueueEnrichment = createServerFn({ method: "POST" })
-  .inputValidator((data: { campaignId: string; contactIds?: string[] }) => data)
+  .inputValidator((data: unknown) => enqueueEnrichmentInput.parse(data))
   .handler(async ({ data }) => {
     const env = getEnv();
     const db = getDb(env.DB);
@@ -55,7 +61,7 @@ export const enqueueEnrichment = createServerFn({ method: "POST" })
 
 // Enqueue drafting jobs for enriched contacts
 export const enqueueDrafting = createServerFn({ method: "POST" })
-  .inputValidator((data: { campaignId: string; contactIds?: string[] }) => data)
+  .inputValidator((data: unknown) => enqueueDraftingInput.parse(data))
   .handler(async ({ data }) => {
     const env = getEnv();
     const db = getDb(env.DB);
@@ -104,7 +110,7 @@ export const enqueueDrafting = createServerFn({ method: "POST" })
 
 // Enqueue sending jobs for approved contacts (with rate limiting via delay)
 export const enqueueSending = createServerFn({ method: "POST" })
-  .inputValidator((data: { campaignId: string }) => data)
+  .inputValidator((data: unknown) => enqueueSendingInput.parse(data))
   .handler(async ({ data }) => {
     const env = getEnv();
     const db = getDb(env.DB);
@@ -151,7 +157,7 @@ export const enqueueSending = createServerFn({ method: "POST" })
 
 // Get campaign progress stats for polling
 export const getCampaignProgress = createServerFn({ method: "GET" })
-  .inputValidator((data: { campaignId: string }) => data)
+  .inputValidator((data: unknown) => getCampaignProgressInput.parse(data))
   .handler(async ({ data }) => {
     const env = getEnv();
     const db = getDb(env.DB);

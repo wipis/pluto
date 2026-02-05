@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { handleError } from "@/lib/handle-error";
 import { getCompany } from "@/lib/server/companies";
 import { enrichCompany } from "@/lib/server/enrichment";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -45,7 +46,7 @@ function CompanyDetail() {
         setEnrichmentData(JSON.parse(updated.enrichmentData));
       }
     } catch (error) {
-      console.error("Enrichment failed:", error);
+      handleError(error, "Enrichment failed");
     }
     setIsEnriching(false);
   };
