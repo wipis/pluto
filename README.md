@@ -15,6 +15,7 @@ A lightweight outreach CRM for managing cold email campaigns with AI-powered res
 | AI | [Anthropic Claude API](https://docs.anthropic.com/) |
 | Research | [Exa API](https://docs.exa.ai/) |
 | Email | Gmail API (OAuth2) |
+| Auth | [Better Auth](https://www.better-auth.com/) (invite-only signups) |
 | Styling | [Tailwind CSS v4](https://tailwindcss.com/) + [shadcn/ui](https://ui.shadcn.com/) |
 
 ## Getting Started
@@ -49,11 +50,8 @@ ANTHROPIC_API_KEY=sk-ant-...
 EXA_API_KEY=...
 GMAIL_CLIENT_ID=...
 GMAIL_CLIENT_SECRET=...
-BETTER_AUTH_SECRET=...
-ALLOWED_EMAILS=user1@example.com,user2@example.com
+BETTER_AUTH_SECRET=generate-a-random-32-char-string
 ```
-
-Note: `ALLOWED_EMAILS` is a comma-separated list of emails permitted to sign up. Leave empty to allow all emails.
 
 For production, set secrets via Wrangler:
 
@@ -65,8 +63,6 @@ wrangler secret put GMAIL_CLIENT_SECRET
 wrangler secret put BETTER_AUTH_SECRET
 ```
 
-To restrict signups, update `ALLOWED_EMAILS` in `wrangler.jsonc` or set it as a secret.
-
 ### Running Locally
 
 ```bash
@@ -74,6 +70,18 @@ pnpm dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000).
+
+### Authentication & Team
+
+Pluto uses invite-only signups:
+
+1. **First user** to sign up becomes the **admin** automatically
+2. After that, the signup page is closed to the public
+3. Admin invites new members from **Settings > Team**, which generates an invite link (`/signup?token=xxx`)
+4. Invited users click the link to create their account
+5. Invite links expire after 7 days and can be revoked
+
+Users have a `role` field — either `admin` or `member`. The admin can manage team members and revoke access from the Settings page.
 
 ## Development
 
@@ -196,6 +204,8 @@ Schema is defined in `src/lib/db/schema.ts` using Drizzle ORM.
 - `emails` - Email history and tracking
 - `activities` - Audit log
 - `gmail_tokens` - OAuth token storage
+- `invites` - Invite tokens for new user signups
+- `users` / `sessions` / `accounts` - Better Auth tables
 
 **Modifying the schema:**
 
@@ -330,7 +340,7 @@ This builds the app and deploys via Wrangler. Ensure production secrets are set 
 **Why Cloudflare D1?**
 - SQLite at the edge with zero cold starts
 - Integrated with Workers runtime
-- Cost-effective for single-user apps
+- Cost-effective for small teams
 
 **Why Cloudflare Queues?**
 - Reliable background job processing
